@@ -60,7 +60,7 @@ class RoboflowContentDetector(private val context: Context) {
     }
 
     // Lower threshold for single-class model
-    private val CONF_THRESH = 0.15f
+    private val CONF_THRESH = 0.50f
     private val IOU_THRESH = 0.45f
 
     private var interpreter: Interpreter? = null

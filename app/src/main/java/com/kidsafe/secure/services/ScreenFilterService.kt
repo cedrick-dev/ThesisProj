@@ -32,7 +32,7 @@ class ScreenFilterService : Service() {
 
         // CRITICAL: Number of consecutive clean frames before hiding overlay
         // This prevents brief flicker when scrolling past NSFW content
-        private const val CLEAN_FRAMES_THRESHOLD = 3
+        private const val CLEAN_FRAMES_THRESHOLD = 1
 
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_DATA = "data"
@@ -111,7 +111,8 @@ class ScreenFilterService : Service() {
                 else WindowManager.LayoutParams.TYPE_PHONE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_SECURE,  // ADD THIS
                 PixelFormat.TRANSLUCENT
             )
 
@@ -121,8 +122,7 @@ class ScreenFilterService : Service() {
             // Start hidden
             blurOverlay?.visibility = View.GONE
 
-            Log.d(TAG, "✓ Overlay initialized ABOVE screen capture layer")
-            Log.d(TAG, "✓ MediaProjection will capture UNDERNEATH overlay")
+            Log.d(TAG, "✓ Overlay initialized with FLAG_SECURE (invisible to screen capture)")
 
         } catch (e: Exception) {
             Log.e(TAG, "✗ Overlay setup failed", e)
@@ -348,56 +348,41 @@ class ScreenFilterService : Service() {
             val hasNsfwContent = predictions.isNotEmpty()
 
             if (hasNsfwContent) {
-                // 🚨 NSFW DETECTED - Show overlay immediately and reset clean counter
-                consecutiveCleanFrames = 0  // CRITICAL FIX: Reset here when NSFW found
+                consecutiveCleanFrames = 0
 
                 if (!isOverlayShowing) {
                     detectedFrames++
                     isOverlayShowing = true
-
                     blurOverlay?.updateNsfwStatus(true)
                     blurOverlay?.visibility = View.VISIBLE
 
                     val responseTime = System.currentTimeMillis() - inferenceStartTime
                     Log.w(TAG, "🚨 NSFW DETECTED! Response: ${responseTime}ms (inference: ${inferenceTime}ms)")
                     predictions.take(2).forEachIndexed { i, p ->
-                        Log.d(TAG, "  [$i]: ${p.className} ${(p.confidence * 100).toInt()}%")
+                        // ADD POSITION INFO
+                        Log.d(TAG, "  [$i]: ${p.className} ${(p.confidence * 100).toInt()}% at (${p.x.toInt()},${p.y.toInt()}) size=${p.w.toInt()}x${p.h.toInt()}")
                     }
                 } else {
-                    // Overlay already showing, just log occasionally
-                    if (totalFrames % 20 == 0) {
-                        Log.d(TAG, "🚨 NSFW still present (${predictions.size} detections)")
+                    // LOG EVERY FRAME when overlay is showing to see if position changes
+                    Log.d(TAG, "🚨 Frame $totalFrames - Still detecting:")
+                    predictions.take(2).forEachIndexed { i, p ->
+                        Log.d(TAG, "  [$i]: ${p.className} ${(p.confidence * 100).toInt()}% at (${p.x.toInt()},${p.y.toInt()}) size=${p.w.toInt()}x${p.h.toInt()}")
                     }
                 }
             } else {
-                // ✅ NO NSFW - Increment clean counter
                 consecutiveCleanFrames++
+                Log.d(TAG, "✅ Clean frame $consecutiveCleanFrames/$CLEAN_FRAMES_THRESHOLD")
 
                 if (isOverlayShowing) {
-                    // Overlay is showing, check if we should hide it
                     if (consecutiveCleanFrames >= CLEAN_FRAMES_THRESHOLD) {
-                        // Enough clean frames, hide the overlay now
                         isOverlayShowing = false
-
                         blurOverlay?.updateNsfwStatus(false)
                         blurOverlay?.visibility = View.GONE
 
                         val responseTime = System.currentTimeMillis() - inferenceStartTime
-                        Log.d(TAG, "✅ Clean for $consecutiveCleanFrames frames - HIDING overlay (${responseTime}ms)")
-
-                        // Keep counting clean frames in case we need stats
-                        // But don't reset - let it accumulate
+                        Log.w(TAG, "✅ OVERLAY HIDDEN after $consecutiveCleanFrames clean frames (${responseTime}ms)")
                     } else {
-                        // Still waiting for more clean frames
-                        if (consecutiveCleanFrames == 1) {
-                            Log.d(TAG, "⏳ NSFW cleared, waiting for ${CLEAN_FRAMES_THRESHOLD - consecutiveCleanFrames} more clean frames...")
-                        }
-                    }
-                } else {
-                    // Overlay not showing, and content is clean - all good
-                    // Occasionally log that we're monitoring
-                    if (totalFrames % 100 == 0) {
-                        Log.d(TAG, "👀 Monitoring... ($consecutiveCleanFrames consecutive clean frames)")
+                        Log.d(TAG, "⏳ Waiting for ${CLEAN_FRAMES_THRESHOLD - consecutiveCleanFrames} more clean frames...")
                     }
                 }
             }
