@@ -2,10 +2,6 @@ package com.kidsafe.secure.nsfw
 
 import android.content.Context
 import android.graphics.*
-import android.renderscript.Allocation
-import android.renderscript.Element
-import android.renderscript.RenderScript
-import android.renderscript.ScriptIntrinsicBlur
 import android.util.Log
 import android.view.View
 
@@ -15,26 +11,31 @@ class BlurOverlayView(context: Context) : View(context) {
         private const val TAG = "BlurOverlayView"
     }
 
-    // Paint for the opaque gradient overlay with blur effect
-    private val overlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    // Strong Gaussian blur effect paint
+    private val blurPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        // Add blur effect
-        maskFilter = BlurMaskFilter(25f, BlurMaskFilter.Blur.NORMAL)
+        color = Color.argb(240, 30, 30, 30) // Very dark, almost opaque
+        // Strong Gaussian blur - radius of 50 for heavy blur
+        maskFilter = BlurMaskFilter(50f, BlurMaskFilter.Blur.NORMAL)
     }
 
-    // Additional solid overlay paint for more opacity
+    // Additional layered blur for extra strength
+    private val secondaryBlurPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.argb(200, 40, 40, 40)
+        maskFilter = BlurMaskFilter(35f, BlurMaskFilter.Blur.NORMAL)
+    }
+
+    // Base solid layer
     private val solidOverlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.argb(220, 40, 40, 40) // Very opaque dark gray
+        color = Color.argb(220, 35, 35, 35)
     }
-
-    // Gradient shader (will be created once view size is known)
-    private var gradientShader: LinearGradient? = null
 
     // Track whether NSFW content is detected
     private var isNsfwDetected = false
 
-    // Optional: Warning text paint
+    // Warning text paint
     private val warningTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textSize = 56f
@@ -52,14 +53,11 @@ class BlurOverlayView(context: Context) : View(context) {
     }
 
     init {
-        setLayerType(LAYER_TYPE_SOFTWARE, null) // Required for BlurMaskFilter
-        Log.d(TAG, "BlurOverlayView initialized with opaque blurred gradient overlay")
+        // Required for BlurMaskFilter to work
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
+        Log.d(TAG, "BlurOverlayView initialized with strong Gaussian blur overlay")
     }
 
-    /**
-     * Update the overlay based on whether NSFW content is detected
-     * @param hasNsfwContent true if any NSFW predictions exist, false otherwise
-     */
     fun updateNsfwStatus(hasNsfwContent: Boolean) {
         if (isNsfwDetected != hasNsfwContent) {
             isNsfwDetected = hasNsfwContent
@@ -68,35 +66,8 @@ class BlurOverlayView(context: Context) : View(context) {
         }
     }
 
-    /**
-     * Convenience method to work with predictions list
-     * @param predictions List of NSFW predictions
-     */
     fun updatePredictions(predictions: List<Prediction>) {
         updateNsfwStatus(predictions.isNotEmpty())
-    }
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-
-        if (w > 0 && h > 0) {
-            // Create a more opaque gradient with blur effect
-            gradientShader = LinearGradient(
-                0f, 0f,
-                0f, h.toFloat(),
-                intArrayOf(
-                    Color.argb(250, 35, 35, 35),   // Almost opaque very dark gray at top
-                    Color.argb(255, 50, 50, 50),   // Fully opaque dark gray in middle
-                    Color.argb(250, 35, 35, 35)    // Almost opaque very dark gray at bottom
-                ),
-                floatArrayOf(0f, 0.5f, 1f),
-                Shader.TileMode.CLAMP
-            )
-
-            overlayPaint.shader = gradientShader
-
-            Log.d(TAG, "Opaque blurred gradient created for view size: ${w}x${h}")
-        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -105,19 +76,25 @@ class BlurOverlayView(context: Context) : View(context) {
         // Only draw overlay if NSFW content is detected
         if (!isNsfwDetected) return
 
-        // Draw multiple layers for stronger blur/opacity effect
+        // Multi-layer blur for maximum effect
 
-        // Layer 1: Solid base layer (very opaque)
+        // Layer 1: Solid base (prevents any content from showing through)
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), solidOverlayPaint)
 
-        // Layer 2: Blurred gradient overlay on top
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
+        // Layer 2: First blur layer
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), blurPaint)
 
-        // Draw warning message
+        // Layer 3: Second blur layer for extra strength
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), secondaryBlurPaint)
+
+        // Layer 4: Another solid layer on top
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), solidOverlayPaint)
+
+        // Draw warning message on top
         val centerX = width / 2f
         val centerY = height / 2f
 
-        // Warning icon (⚠ symbol)
+        // Warning icon
         canvas.drawText("⚠", centerX, centerY - 80f, warningTextPaint)
 
         // Main warning text
@@ -127,63 +104,34 @@ class BlurOverlayView(context: Context) : View(context) {
         canvas.drawText("Content has been blocked for your safety", centerX, centerY + 70f, warningSubTextPaint)
     }
 
-    /**
-     * Clean up resources (minimal cleanup needed now)
-     */
     fun cleanup() {
-        gradientShader = null
         Log.d(TAG, "Cleanup completed")
     }
 
     /**
-     * Customize the overlay opacity level
+     * Customize blur intensity
+     * @param radius blur radius (10-100 recommended, default 50)
+     */
+    fun setBlurIntensity(radius: Float) {
+        val clampedRadius = radius.coerceIn(10f, 100f)
+        blurPaint.maskFilter = BlurMaskFilter(clampedRadius, BlurMaskFilter.Blur.NORMAL)
+        secondaryBlurPaint.maskFilter = BlurMaskFilter(clampedRadius * 0.7f, BlurMaskFilter.Blur.NORMAL)
+        if (isNsfwDetected) {
+            invalidate()
+        }
+    }
+
+    /**
+     * Customize overlay opacity
      * @param opacity 0-255, where 255 is fully opaque
      */
     fun setOverlayOpacity(opacity: Int) {
-        val clampedOpacity = opacity.coerceIn(0, 255)
-        solidOverlayPaint.color = Color.argb(clampedOpacity, 40, 40, 40)
+        val clampedOpacity = opacity.coerceIn(150, 255)
+        solidOverlayPaint.color = Color.argb(clampedOpacity, 35, 35, 35)
+        blurPaint.color = Color.argb((clampedOpacity * 0.95f).toInt(), 30, 30, 30)
+        secondaryBlurPaint.color = Color.argb((clampedOpacity * 0.8f).toInt(), 40, 40, 40)
         if (isNsfwDetected) {
             invalidate()
         }
-    }
-
-    /**
-     * Customize the blur radius
-     * @param radius blur radius in pixels (1-25 recommended)
-     */
-    fun setBlurRadius(radius: Float) {
-        val clampedRadius = radius.coerceIn(1f, 25f)
-        overlayPaint.maskFilter = BlurMaskFilter(clampedRadius, BlurMaskFilter.Blur.NORMAL)
-        if (isNsfwDetected) {
-            invalidate()
-        }
-    }
-
-    /**
-     * Customize the overlay appearance
-     */
-    fun setOverlayColors(topColor: Int, midColor: Int, bottomColor: Int) {
-        if (width > 0 && height > 0) {
-            gradientShader = LinearGradient(
-                0f, 0f,
-                0f, height.toFloat(),
-                intArrayOf(topColor, midColor, bottomColor),
-                floatArrayOf(0f, 0.5f, 1f),
-                Shader.TileMode.CLAMP
-            )
-            overlayPaint.shader = gradientShader
-            if (isNsfwDetected) {
-                invalidate()
-            }
-        }
-    }
-
-    /**
-     * Set custom warning message
-     */
-    fun setWarningText(mainText: String, subText: String = "") {
-        // Store these if you want to customize the text
-        // For now, they're hardcoded in onDraw
-        // You could add member variables to store these
     }
 }
