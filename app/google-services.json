@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "468468639315",
+    "firebase_url": "https://aegistnet-default-rtdb.firebaseio.com",
+    "project_id": "aegistnet",
+    "storage_bucket": "aegistnet.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:468468639315:android:7255cbf9a181ca587388a6",
+        "android_client_info": {
+          "package_name": "com.mansourappdevelopment.androidapp.kidsafe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "468468639315-9r9a6rh73pijjaguqk29dcugjb1r79k4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mansourappdevelopment.androidapp.kidsafe",
+            "certificate_hash": "a4b5c51fdbd7025514bc0995076c833a49acf615"
+          }
+        },
+        {
+          "client_id": "468468639315-sm2uvcu72s5hfq2ceud4vvjtulg7k7vo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnC0HvvB-7rQnWeFKV0ttH3mPeNY8AdSU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "468468639315-sm2uvcu72s5hfq2ceud4vvjtulg7k7vo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
