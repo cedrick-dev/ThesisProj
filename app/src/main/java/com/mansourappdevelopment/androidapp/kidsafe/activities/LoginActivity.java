@@ -303,12 +303,10 @@ public class LoginActivity extends AppCompatActivity implements OnPasswordResetL
 	}
 
 	private void startModeSelectionActivity() {
-		Intent intent = new Intent(this, ModeSelectionActivity.class);
+		// Go directly to child registration
+		Intent intent = new Intent(this, SignUpActivity.class);
+		intent.putExtra(Constant.PARENT_SIGN_UP, false);
 		startActivity(intent);
-		/*
-		 * Intent intent = new Intent(this, SignUpActivity.class);
-		 * startActivity(intent);
-		 */
 	}
 
 	private void sendPasswordRecoveryEmail() {
