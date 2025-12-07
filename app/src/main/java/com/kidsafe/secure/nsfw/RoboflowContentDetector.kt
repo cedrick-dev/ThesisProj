@@ -27,7 +27,8 @@ data class Prediction(
     val h: Float,      // Height
     val confidence: Float,
     val className: String = "bikini",
-    val classId: Int = 0
+    val classId: Int = 0,
+    val isFullScreen: Boolean = false  // Flag to indicate full-screen coverage
 ) {
     val boundingBox: RectF by lazy {
         RectF(
@@ -39,7 +40,7 @@ data class Prediction(
     }
 
     override fun toString(): String {
-        return "Prediction(center=(${x.toInt()}, ${y.toInt()}), size=(${w.toInt()}x${h.toInt()}), conf=${"%.3f".format(confidence)}, class=$className)"
+        return "Prediction(center=(${x.toInt()}, ${y.toInt()}), size=(${w.toInt()}x${h.toInt()}), conf=${"%.3f".format(confidence)}, class=$className, fullScreen=$isFullScreen)"
     }
 }
 
@@ -57,6 +58,9 @@ class RoboflowContentDetector(private val context: Context) {
 
         // Single class model
         private const val CLASS_NAME = "bikini"
+
+        // Enable full-screen mode: when true, any detection triggers full-screen coverage
+        private const val USE_FULLSCREEN_MODE = true
     }
 
     // Lower threshold for single-class model
@@ -159,6 +163,27 @@ class RoboflowContentDetector(private val context: Context) {
                             Log.d(TAG, "  [$index]: ${pred}")
                         }
                     }
+                }
+
+                // 5. If full-screen mode is enabled and ANY NSFW is detected, return full-screen prediction
+                if (USE_FULLSCREEN_MODE && nms.isNotEmpty()) {
+                    val maxConfidence = nms.maxByOrNull { it.confidence }?.confidence ?: 0.5f
+                    val fullScreenPrediction = Prediction(
+                        x = originalWidth / 2f,
+                        y = originalHeight / 2f,
+                        w = originalWidth.toFloat(),
+                        h = originalHeight.toFloat(),
+                        confidence = maxConfidence,
+                        className = CLASS_NAME,
+                        classId = 0,
+                        isFullScreen = true
+                    )
+
+                    if (shouldLogDetails) {
+                        Log.d(TAG, "FULL-SCREEN MODE: Converting ${nms.size} detections to single full-screen prediction")
+                    }
+
+                    return@withContext listOf(fullScreenPrediction)
                 }
 
                 return@withContext nms

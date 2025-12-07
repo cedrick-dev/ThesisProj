@@ -34,7 +34,7 @@ class ScreenFilterService : Service() {
         // This prevents brief flicker when scrolling past NSFW content
         // Increased to 10 to handle ML model prediction inconsistencies on static images
         // At 20 FPS (50ms intervals), 10 frames = 500ms delay before hiding
-        private const val CLEAN_FRAMES_THRESHOLD = 10
+        private const val CLEAN_FRAMES_THRESHOLD = 3
 
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_DATA = "data"
@@ -301,7 +301,7 @@ class ScreenFilterService : Service() {
 
                 // Update overlay visibility
                 withContext(Dispatchers.Main.immediate) {
-                    updateOverlayVisibility(filteredPredictions, inferenceTime)
+                    updateOverlayVisibility(filteredPredictions, inferenceTime, fullBitmap)
                 }
 
             } catch (e: Exception) {
@@ -345,17 +345,19 @@ class ScreenFilterService : Service() {
      * - Show overlay immediately when NSFW detected
      * - Hide overlay only after N consecutive clean frames
      */
-    private fun updateOverlayVisibility(predictions: List<Prediction>, inferenceTime: Long) {
+    private fun updateOverlayVisibility(predictions: List<Prediction>, inferenceTime: Long, bitmap: Bitmap?) {
         try {
             val hasNsfwContent = predictions.isNotEmpty()
 
             if (hasNsfwContent) {
                 consecutiveCleanFrames = 0
 
+                // ALWAYS update the blur content so it's dynamic
+                blurOverlay?.updatePredictions(predictions, bitmap)
+
                 if (!isOverlayShowing) {
                     detectedFrames++
                     isOverlayShowing = true
-                    blurOverlay?.updateNsfwStatus(true)
                     blurOverlay?.visibility = View.VISIBLE
 
                     val responseTime = System.currentTimeMillis() - inferenceStartTime
@@ -378,7 +380,7 @@ class ScreenFilterService : Service() {
                 if (isOverlayShowing) {
                     if (consecutiveCleanFrames >= CLEAN_FRAMES_THRESHOLD) {
                         isOverlayShowing = false
-                        blurOverlay?.updateNsfwStatus(false)
+                        blurOverlay?.updatePredictions(emptyList(), null)
                         blurOverlay?.visibility = View.GONE
 
                         val responseTime = System.currentTimeMillis() - inferenceStartTime
