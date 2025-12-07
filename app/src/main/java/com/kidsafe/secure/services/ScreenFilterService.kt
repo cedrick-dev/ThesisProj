@@ -32,7 +32,9 @@ class ScreenFilterService : Service() {
 
         // CRITICAL: Number of consecutive clean frames before hiding overlay
         // This prevents brief flicker when scrolling past NSFW content
-        private const val CLEAN_FRAMES_THRESHOLD = 1
+        // Increased to 10 to handle ML model prediction inconsistencies on static images
+        // At 20 FPS (50ms intervals), 10 frames = 500ms delay before hiding
+        private const val CLEAN_FRAMES_THRESHOLD = 10
 
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_DATA = "data"
