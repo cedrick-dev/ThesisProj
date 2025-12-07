@@ -204,7 +204,10 @@ public class LoginActivity extends AppCompatActivity implements OnPasswordResetL
 								} catch (ClassCastException e) {
 									e.printStackTrace();
 								}
-								switch (errorCode) {
+								
+								// Add null check to prevent NullPointerException
+								if (errorCode != null) {
+									switch (errorCode) {
 									case "ERROR_INVALID_EMAIL":
 										txtLogInEmail.setError(getString(R.string.enter_valid_email));
 										break;
@@ -217,6 +220,11 @@ public class LoginActivity extends AppCompatActivity implements OnPasswordResetL
 									default:
 										Toast.makeText(LoginActivity.this, getString(R.string.authentication_failed),
 												Toast.LENGTH_SHORT).show();
+									}
+								} else {
+									// Handle null errorCode (network errors, non-Firebase exceptions)
+									Toast.makeText(LoginActivity.this, getString(R.string.authentication_failed),
+											Toast.LENGTH_SHORT).show();
 								}
 							}
 						}
