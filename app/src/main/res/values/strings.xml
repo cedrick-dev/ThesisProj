@@ -185,4 +185,6 @@
     <string name="would_you_love_to_add_a_profile_image">Would you like to add a profile image?</string>
     <string name="please_turn_on_the_gps">Please turn on the gps on</string>
 
+    <string name="nsfw_accessibility_service_description">Used by AegistNet to automatically navigate back when inappropriate content is detected.</string>
+    <string name="nsfw_accessibility_service_label">AegistNet Protection Action</string>
 </resources>

@@ -366,6 +366,9 @@ class ScreenFilterService : Service() {
                         // ADD POSITION INFO
                         Log.d(TAG, "  [$i]: ${p.className} ${(p.confidence * 100).toInt()}% at (${p.x.toInt()},${p.y.toInt()}) size=${p.w.toInt()}x${p.h.toInt()}")
                     }
+                    
+                    // Trigger Back or Home Action
+                    triggerNsfwAction()
                 } else {
                     // LOG EVERY FRAME when overlay is showing to see if position changes
                     Log.d(TAG, "🚨 Frame $totalFrames - Still detecting:")
@@ -392,6 +395,21 @@ class ScreenFilterService : Service() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "UI update error", e)
+        }
+    }
+
+    private fun triggerNsfwAction() {
+        if (NsfwActionAccessibilityService.isServiceEnabled) {
+            Log.d(TAG, "Triggering BACK action via AccessibilityService")
+            val intent = Intent(NsfwActionAccessibilityService.ACTION_TRIGGER_BACK)
+            sendBroadcast(intent)
+        } else {
+            Log.d(TAG, "AccessibilityService disabled, falling back to HOME screen")
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(homeIntent)
         }
     }
 
