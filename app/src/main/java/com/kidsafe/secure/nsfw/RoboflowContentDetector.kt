@@ -212,9 +212,9 @@ class RoboflowContentDetector(private val context: Context) {
         val childGender = sharedPrefs.getString("child_gender", "boy") ?: "boy"
         
         // Define target classes based on gender
-        // Assume class 0 is "bikini" and class 1 is "male_underwear" (or similar)
+        // Assume class 0 is "bikini" and class 1 is "underwear" (or similar)
         // If it's a boy, we filter out class 0 (bikini).
-        // If it's a girl, we filter out class 1 (male_underwear).
+        // If it's a girl, we filter out class 1 (underwear).
         val targetClassIndex = if (childGender.equals("girl", ignoreCase = true)) {
             // If they are a girl, filter out "man on underwears" or similar (class 1)
             if (numClasses > 1) 1 else 0
@@ -285,7 +285,7 @@ class RoboflowContentDetector(private val context: Context) {
                 Log.d(TAG, "Detection #$detectedCount: raw=(${xs[i]}, ${ys[i]}, ${ws[i]}, ${hs[i]}) -> pixel=(${centerX.toInt()}, ${centerY.toInt()}, ${width.toInt()}x${height.toInt()}), conf=${"%.3f".format(maxConfidence)}, classIndex=$bestClass")
             }
             
-            val detectedClassName = if (bestClass == 0) "bikini" else "male_underwear"
+            val detectedClassName = if (bestClass == 0) "bikini" else "underwear"
 
             list.add(
                 Prediction(
