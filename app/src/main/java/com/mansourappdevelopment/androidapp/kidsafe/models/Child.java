@@ -5,6 +5,7 @@ import java.util.HashMap;
 
 public class Child extends User {
 	private String parentEmail;
+	private String gender;
 	private ArrayList<App> apps = new ArrayList<>();
 	private ArrayList<Contact> Contacts = new ArrayList<>();
 	private Location location;
@@ -29,6 +30,14 @@ public class Child extends User {
 	public void setParentEmail(String parentEmail) {
 		this.parentEmail = parentEmail;
 	}
+
+	public String getGender() {
+		return gender;
+	}
+
+	public void setGender(String gender) {
+		this.gender = gender;
+	}
 	
 	public ArrayList<App> getApps() {
 		return apps;
@@ -43,7 +52,7 @@ public class Child extends User {
 	}
 	
 	public void setContacts(ArrayList<Contact> contacts) {
-		Contacts = contacts;
+		this.Contacts = contacts;
 	}
 	
 	public Location getLocation() {

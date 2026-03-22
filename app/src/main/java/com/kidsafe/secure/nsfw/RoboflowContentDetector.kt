@@ -193,10 +193,6 @@ class RoboflowContentDetector(private val context: Context) {
         }
     }
 
-    /**
-     * Parse YOLOv8 format predictions for SINGLE-CLASS model
-     * Format: [num_features, num_anchors] where features = [x, y, w, h, class_score]
-     */
     private fun parseYoloV8Predictions(
         output: Array<FloatArray>,
         originalWidth: Int,
@@ -211,20 +207,43 @@ class RoboflowContentDetector(private val context: Context) {
         val ws = output[2]      // Width
         val hs = output[3]      // Height
 
-        // For single-class model, class score is at index 4
-        val classScores = output[4]
+        // Fetch gender from SharedPreferences
+        val sharedPrefs = context.getSharedPreferences("KidSafePrefs", Context.MODE_PRIVATE)
+        val childGender = sharedPrefs.getString("child_gender", "boy") ?: "boy"
+        
+        // Define target classes based on gender
+        // Assume class 0 is "bikini" and class 1 is "male_underwear" (or similar)
+        // If it's a boy, we filter out class 0 (bikini).
+        // If it's a girl, we filter out class 1 (male_underwear).
+        val targetClassIndex = if (childGender.equals("girl", ignoreCase = true)) {
+            // If they are a girl, filter out "man on underwears" or similar (class 1)
+            if (numClasses > 1) 1 else 0
+        } else {
+            // If they are a boy, filter out "girls on bikinis" (class 0)
+            0
+        }
 
         if (logDetails) {
-            Log.d(TAG, "Parsing ${numAnchors} anchors, single class, threshold=$CONF_THRESH")
+            Log.d(TAG, "Parsing ${numAnchors} anchors, ${numClasses} classes. Gender=$childGender, TargetClass=$targetClassIndex. threshold=$CONF_THRESH")
         }
 
         var detectedCount = 0
 
         for (i in 0 until numAnchors) {
-            // Single class - just get the score directly
-            val confidence = classScores[i]
+            // Find the class with highest confidence among all classes
+            var maxConfidence = -1f
+            var bestClass = -1
+            
+            for (c in 0 until numClasses) {
+                val conf = output[4 + c][i]
+                if (conf > maxConfidence) {
+                    maxConfidence = conf
+                    bestClass = c
+                }
+            }
 
-            if (confidence < CONF_THRESH) continue
+            // Only care about the target class for the child's gender
+            if (bestClass != targetClassIndex || maxConfidence < CONF_THRESH) continue
 
             detectedCount++
 
@@ -263,8 +282,10 @@ class RoboflowContentDetector(private val context: Context) {
             }
 
             if (logDetails && detectedCount <= 5) {
-                Log.d(TAG, "Detection #$detectedCount: raw=(${xs[i]}, ${ys[i]}, ${ws[i]}, ${hs[i]}) -> pixel=(${centerX.toInt()}, ${centerY.toInt()}, ${width.toInt()}x${height.toInt()}), conf=${"%.3f".format(confidence)}")
+                Log.d(TAG, "Detection #$detectedCount: raw=(${xs[i]}, ${ys[i]}, ${ws[i]}, ${hs[i]}) -> pixel=(${centerX.toInt()}, ${centerY.toInt()}, ${width.toInt()}x${height.toInt()}), conf=${"%.3f".format(maxConfidence)}, classIndex=$bestClass")
             }
+            
+            val detectedClassName = if (bestClass == 0) "bikini" else "male_underwear"
 
             list.add(
                 Prediction(
@@ -272,15 +293,15 @@ class RoboflowContentDetector(private val context: Context) {
                     y = centerY,
                     w = width,
                     h = height,
-                    confidence = confidence,
-                    className = CLASS_NAME,
-                    classId = 0
+                    confidence = maxConfidence,
+                    className = detectedClassName,
+                    classId = bestClass
                 )
             )
         }
 
         if (logDetails) {
-            Log.d(TAG, "Total valid detections: ${list.size}")
+            Log.d(TAG, "Total valid detections for $childGender: ${list.size}")
         }
 
         return list

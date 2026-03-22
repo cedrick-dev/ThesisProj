@@ -335,6 +335,9 @@ public class MainForegroundService extends Service {
 					DataSnapshot nodeShot = dataSnapshot.getChildren().iterator().next();
 					Child child = nodeShot.getValue(Child.class);
 					apps = child.getApps();
+					if (child.getGender() != null) {
+						com.mansourappdevelopment.androidapp.kidsafe.utils.SharedPrefsUtils.setStringPreference(MainForegroundService.this, "child_gender", child.getGender());
+					}
 
 					Log.i(TAG, "onDataChange: child name: " + child.getName());
 					// updateAppStats(apps);
