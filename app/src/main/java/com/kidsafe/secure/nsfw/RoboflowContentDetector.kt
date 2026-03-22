@@ -208,7 +208,7 @@ class RoboflowContentDetector(private val context: Context) {
         val hs = output[3]      // Height
 
         // Fetch gender from SharedPreferences
-        val sharedPrefs = context.getSharedPreferences("KidSafePrefs", Context.MODE_PRIVATE)
+        val sharedPrefs = context.getSharedPreferences(com.mansourappdevelopment.androidapp.kidsafe.utils.Constant.KID_SAFE_PREFS, Context.MODE_PRIVATE)
         val childGender = sharedPrefs.getString("child_gender", "boy") ?: "boy"
         
         // Define target classes based on gender
