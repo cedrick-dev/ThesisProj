@@ -46,52 +46,8 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/padding_24dp">
-
-                <EditText
-                    android:id="@+id/txtLogInEmail"
-                    style="@style/MainEditText"
-                    android:drawableStart="@drawable/ic_mail"
-                    android:hint="@string/email_address"
-                    android:inputType="textEmailAddress" />
-
-                <EditText
-                    android:id="@+id/txtLogInPassword"
-                    style="@style/MainEditText"
-                    android:drawableStart="@drawable/ic_lock"
-                    android:hint="@string/password"
-                    android:inputType="textPassword" />
-
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="@dimen/margin_8dp"
-                    android:orientation="horizontal">
-
-                    <CheckBox
-                        android:id="@+id/checkBoxRememberMe"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/remember_me"
-                        android:textColor="@color/flatui_wet_asphalt" />
-
-                    <TextView
-                        android:id="@+id/txtForgotPassword"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|center"
-                        android:text="@string/forgot_your_password"
-                        android:textColor="@color/flatui_turquoise" />
-                </FrameLayout>
-
-            </LinearLayout>
-
             <Button
-                android:id="@+id/btnLogin"
+                android:id="@+id/btnChildQrLogin"
                 style="@style/OkButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -99,7 +55,9 @@
                 android:layout_marginTop="@dimen/margin_8dp"
                 android:layout_marginEnd="@dimen/margin_32dp"
                 android:layout_marginBottom="@dimen/margin_8dp"
-                android:text="@string/login_button" />
+                android:backgroundTint="@color/flatui_silver"
+                android:textColor="@color/flatui_midnight_blue"
+                android:text="Child Device: Scan Parent QR to Login" />
 
             <ProgressBar
                 android:id="@+id/progressBar"
@@ -108,32 +66,6 @@
                 android:layout_height="50dp"
                 android:layout_marginBottom="20dp"
                 android:visibility="gone" />
-
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_margin="@dimen/margin_8dp"
-                android:gravity="center"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/new_here"
-                    android:textColor="@color/flatui_wet_asphalt"
-                    android:textSize="@dimen/text_size_16sp" />
-
-                <TextView
-                    android:id="@+id/txtSignUp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/margin_8dp"
-                    android:text="@string/sign_up_here"
-                    android:textColor="@color/flatui_turquoise"
-                    android:textSize="@dimen/text_size_16sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
 
         </LinearLayout>
     </ScrollView>
