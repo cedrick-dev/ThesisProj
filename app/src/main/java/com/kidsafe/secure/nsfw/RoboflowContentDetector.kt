@@ -53,7 +53,7 @@ class RoboflowContentDetector(private val context: Context) {
 
     companion object {
         private const val TAG = "RoboflowDetector"
-        private const val MODEL_FILE = "Bikini_Model(Version2).tflite"
+        private const val MODEL_FILE = "Updated_Current_Model.tflite"
         private const val INPUT_SIZE = 512
 
         // Single class model
