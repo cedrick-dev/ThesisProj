@@ -211,39 +211,39 @@ class RoboflowContentDetector(private val context: Context) {
         val sharedPrefs = context.getSharedPreferences(com.mansourappdevelopment.androidapp.kidsafe.utils.Constant.KID_SAFE_PREFS, Context.MODE_PRIVATE)
         val childGender = sharedPrefs.getString("child_gender", "boy") ?: "boy"
         
-        // Define target classes based on gender
-        // Assume class 0 is "bikini" and class 1 is "underwear" (or similar)
-        // If it's a boy, we filter out class 0 (bikini).
-        // If it's a girl, we filter out class 1 (underwear).
-        val targetClassIndex = if (childGender.equals("girl", ignoreCase = true)) {
-            // If they are a girl, filter out "man on underwears" or similar (class 1)
-            if (numClasses > 1) 1 else 0
+        // Define target classes based on gender and Roboflow classes:
+        // 0: bikini, 1: nude, 2: underwear
+        val targetClasses = if (childGender.equals("girl", ignoreCase = true)) {
+            // For girls, filter 'nude' and 'underwear'
+            listOf(1, 2)
         } else {
-            // If they are a boy, filter out "girls on bikinis" (class 0)
-            0
+            // For boys, filter 'bikini' and 'nude'
+            listOf(0, 1)
         }
 
         if (logDetails) {
-            Log.d(TAG, "Parsing ${numAnchors} anchors, ${numClasses} classes. Gender=$childGender, TargetClass=$targetClassIndex. threshold=$CONF_THRESH")
+            Log.d(TAG, "Parsing ${numAnchors} anchors, ${numClasses} classes. Gender=$childGender, TargetClasses=$targetClasses. threshold=$CONF_THRESH")
         }
 
         var detectedCount = 0
 
         for (i in 0 until numAnchors) {
-            // Find the class with highest confidence among all classes
+            // Find the class with highest confidence among the target classes
             var maxConfidence = -1f
             var bestClass = -1
             
-            for (c in 0 until numClasses) {
-                val conf = output[4 + c][i]
-                if (conf > maxConfidence) {
-                    maxConfidence = conf
-                    bestClass = c
+            for (c in targetClasses) {
+                if (c < numClasses) {
+                    val conf = output[4 + c][i]
+                    if (conf > maxConfidence) {
+                        maxConfidence = conf
+                        bestClass = c
+                    }
                 }
             }
 
-            // Only care about the target class for the child's gender
-            if (bestClass != targetClassIndex || maxConfidence < CONF_THRESH) continue
+            // If no valid class met the threshold, skip
+            if (bestClass == -1 || maxConfidence < CONF_THRESH) continue
 
             detectedCount++
 
@@ -285,7 +285,12 @@ class RoboflowContentDetector(private val context: Context) {
                 Log.d(TAG, "Detection #$detectedCount: raw=(${xs[i]}, ${ys[i]}, ${ws[i]}, ${hs[i]}) -> pixel=(${centerX.toInt()}, ${centerY.toInt()}, ${width.toInt()}x${height.toInt()}), conf=${"%.3f".format(maxConfidence)}, classIndex=$bestClass")
             }
             
-            val detectedClassName = if (bestClass == 0) "bikini" else "underwear"
+            val detectedClassName = when (bestClass) {
+                0 -> "bikini"
+                1 -> "nude"
+                2 -> "underwear"
+                else -> "unknown"
+            }
 
             list.add(
                 Prediction(
