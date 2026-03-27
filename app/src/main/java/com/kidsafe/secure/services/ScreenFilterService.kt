@@ -27,7 +27,7 @@ class ScreenFilterService : Service() {
     companion object {
         private const val TAG = "AegistNet-ScreenFilter"
         private const val NOTIFICATION_ID = 1001
-        private const val PROCESS_INTERVAL_MS = 50L // 20 FPS
+        private const val PROCESS_INTERVAL_MS = 33L // 30 FPS
         private const val MAX_INFERENCE_TIME_MS = 300L
 
         // CRITICAL: Number of consecutive clean frames before hiding overlay

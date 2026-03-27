@@ -77,6 +77,10 @@ class RoboflowContentDetector(private val context: Context) {
 
     // Frame counter for periodic detailed logging
     private var frameCount = 0
+    
+    // Cached gender to avoid SharedPreferences I/O per frame
+    private var cachedGender: String = "boy"
+    private var lastGenderFetchTime: Long = 0
 
     init {
         try {
@@ -207,13 +211,17 @@ class RoboflowContentDetector(private val context: Context) {
         val ws = output[2]      // Width
         val hs = output[3]      // Height
 
-        // Fetch gender from SharedPreferences
-        val sharedPrefs = context.getSharedPreferences(com.mansourappdevelopment.androidapp.kidsafe.utils.Constant.KID_SAFE_PREFS, Context.MODE_PRIVATE)
-        val childGender = sharedPrefs.getString("child_gender", "boy") ?: "boy"
+        // Refresh gender from SharedPreferences at most every 5 seconds
+        val now = System.currentTimeMillis()
+        if (now - lastGenderFetchTime > 5000) {
+            val sharedPrefs = context.getSharedPreferences(com.mansourappdevelopment.androidapp.kidsafe.utils.Constant.KID_SAFE_PREFS, Context.MODE_PRIVATE)
+            cachedGender = sharedPrefs.getString("child_gender", "boy") ?: "boy"
+            lastGenderFetchTime = now
+        }
         
         // Define target classes based on gender and Roboflow classes:
         // 0: bikini, 1: nude, 2: underwear
-        val targetClasses = if (childGender.equals("girl", ignoreCase = true)) {
+        val targetClasses = if (cachedGender.equals("girl", ignoreCase = true)) {
             // For girls, filter 'nude' and 'underwear'
             listOf(1, 2)
         } else {
@@ -222,7 +230,7 @@ class RoboflowContentDetector(private val context: Context) {
         }
 
         if (logDetails) {
-            Log.d(TAG, "Parsing ${numAnchors} anchors, ${numClasses} classes. Gender=$childGender, TargetClasses=$targetClasses. threshold=$CONF_THRESH")
+            Log.d(TAG, "Parsing ${numAnchors} anchors, ${numClasses} classes. Gender=$cachedGender, TargetClasses=$targetClasses. threshold=$CONF_THRESH")
         }
 
         var detectedCount = 0
@@ -306,7 +314,7 @@ class RoboflowContentDetector(private val context: Context) {
         }
 
         if (logDetails) {
-            Log.d(TAG, "Total valid detections for $childGender: ${list.size}")
+            Log.d(TAG, "Total valid detections for $cachedGender: ${list.size}")
         }
 
         return list
