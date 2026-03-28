@@ -239,12 +239,12 @@ class RoboflowContentDetector(private val context: Context) {
             var classId = 0
             for (c in 0 until numClasses) {
                 // GENDER FILTERING RULE:
-                // boy (male): flag class 1 (bikinis), class 2 (nudity)
-                // girl (female): flag class 0 (mens underwear), class 2 (nudity)
+                // boy (male): flag class 0 (bikinis), class 1 (nudity)
+                // girl (female): flag class 2 (mens underwear), class 1 (nudity)
                 val isBlockedClass = if (isBoy) {
-                    c == 1 || c == 2
+                    c == 0 || c == 1
                 } else if (isGirl) {
-                    c == 0 || c == 2
+                    c == 2 || c == 1
                 } else {
                     if (logDetails && c == 0) {
                         Log.e(TAG, "GENDER UNRECOGNIZED: '$childGender'. Falling back to NUDITY-ONLY blocking.")
