@@ -101,8 +101,6 @@ public class LoginActivity extends AppCompatActivity {
 		options.setCameraId(0);
 		options.setBeepEnabled(false);
 		options.setBarcodeImageEnabled(true);
-		options.setOrientationLocked(true);
-		options.setCaptureActivity(CustomScannerActivity.class);
 		barcodeLauncher.launch(options);
 	}
 
