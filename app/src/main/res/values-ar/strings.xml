@@ -67,7 +67,7 @@
     <string name="confirm">تأكيد</string>
     <string name="connected">متصل</string>
     <string name="contacts">جهات الاتصال</string>
-    <string name="d_marwa_abbas">د. مروة عباس</string>
+
     <string name="deleted_the_app">قام بحذف التطبيق</string>
     <string name="developers">المطورون</string>
     <string name="device">جهاز</string>
@@ -85,14 +85,14 @@
     <string name="home">الصفحة الرئيسية</string>
     <string name="if_he_exceeded_it_you_will_be_alerted">، إذا تم تجاوزه ، سيتم تنبيهك</string>
     <string name="is_out_of_the_fence">خارج السور</string>
-    <string name="khalid_samir">خالد سمير</string>
+
     <string name="kids">أطفال</string>
     <string name="location_permission">إذن الحصول على الموقع</string>
     <string name="location_permission_explanation">هناك حاجة إلى هذا الإذن للسماح لك بالحصول على موقع طفلك</string>
     <string name="lock">إغلاق</string>
     <string name="login_with_google">تسجيل الدخول بجوجل</string>
-    <string name="mahmoud_mansour">محمود منصور</string>
-    <string name="many_thanks_goes_to_freepik_and_smashiocns_for_the_graphics">جزيل الشكر لموقع freepik.com و smashicons.com للتصميمات</string>
+
+
     <string name="messages">الرسائل</string>
     <string name="minutes_ago">دقائق ماضيه</string>
     <string name="name_validation">أدخل اسمًا أقل من 15 حرفًا</string>
@@ -151,7 +151,7 @@
     <string name="sign_up_falied">فشل انشاء الحساب</string>
     <string name="sign_up_with_google">التسجيل بجوحل</string>
     <string name="stop">توقف</string>
-    <string name="supervisor">المشرف</string>
+
     <string name="this_app_is_blocked_by_your_parents">تم حظره من قبل والديك</string>
     <string name="this_email_isnt_registered_as_parent">هذا البريد الإلكتروني غير مسجل كأحد الوالدين</string>
     <string name="two_dots">:</string>

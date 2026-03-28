@@ -47,25 +47,27 @@ data class Prediction(
 /**
  * Content detector for NSFW images using TensorFlow Lite model
  * Supports YOLOv8 format with shape [1, num_classes+4, num_anchors]
- * OPTIMIZED FOR SINGLE-CLASS MODEL: Bikini_Model(Version2).tflite
+ * OPTIMIZED FOR SINGLE-CLASS MODEL: Updated_ModelTesting#4.tflite
  */
 class RoboflowContentDetector(private val context: Context) {
 
     companion object {
         private const val TAG = "RoboflowDetector"
         private const val MODEL_FILE = "Updated_Current_Model.tflite"
-        private const val INPUT_SIZE = 512
+        const val INPUT_SIZE = 512
 
         // Single class model
-        private const val CLASS_NAME = "bikini"
+        private const val CLASS_NAME = "explicit"
 
         // Enable full-screen mode: when true, any detection triggers full-screen coverage
         private const val USE_FULLSCREEN_MODE = true
     }
 
-    // Lower threshold for single-class model
-    private val CONF_THRESH = 0.70f
-    private val IOU_THRESH = 0.45f
+    // Lower threshold for debugging and motion-blur tolerance
+    // A moving screen creates motion blur which causes the AI's confidence to drop below 0.35.
+    // 0.25 strikes a perfect balance: ignores pure false positives, but catches blurry scrolling explicit images.
+    private val CONF_THRESH = 0.25f
+    private val IOU_THRESH = 0.25f
 
     private var interpreter: Interpreter? = null
     private var imageProcessor: ImageProcessor? = null
@@ -77,18 +79,20 @@ class RoboflowContentDetector(private val context: Context) {
 
     // Frame counter for periodic detailed logging
     private var frameCount = 0
-    
-    // Cached gender to avoid SharedPreferences I/O per frame
-    private var cachedGender: String = "boy"
-    private var lastGenderFetchTime: Long = 0
 
     init {
         try {
             val model = FileUtil.loadMappedFile(context, MODEL_FILE)
 
             val options = Interpreter.Options().apply {
-                setNumThreads(4)
-                setUseNNAPI(false)
+                // Use exactly 2 threads. Opening 4 threads successfully spiked your inference 
+                // to 800ms because the POCO C75 CPU couldn't handle the multi-threading overhead!
+                setNumThreads(2)
+                
+                // NNAPI securely hooks into the Mediatek dedicated AI Processing Unit (APU) if it exists.
+                // If it fails or your phone doesn't have an APU, it safely falls back to CPU without a crash!
+                setUseNNAPI(true)
+                setUseXNNPACK(true)
             }
 
             interpreter = Interpreter(model, options)
@@ -105,7 +109,7 @@ class RoboflowContentDetector(private val context: Context) {
                 numAnchors = outputShape[2]
                 numClasses = numFeatures - 4
 
-                Log.d(TAG, "✓ Single-class model - Features: $numFeatures, Anchors: $numAnchors, Classes: $numClasses")
+                Log.d(TAG, "✓ Model - Features: $numFeatures, Anchors: $numAnchors, Classes: $numClasses")
 
                 // Allocate buffer ONCE
                 outputBuffer = Array(numFeatures) { FloatArray(numAnchors) }
@@ -146,6 +150,11 @@ class RoboflowContentDetector(private val context: Context) {
             val bitmapCopy = bitmap.copy(Bitmap.Config.ARGB_8888, false)
 
             try {
+                // Fetch the gender LIVE right before inference so if the parent changes it, it instantly updates!
+                val childGender = com.mansourappdevelopment.androidapp.kidsafe.utils.SharedPrefsUtils.getStringPreference(context, "child_gender", null)
+                val isBoy = childGender?.trim()?.equals("boy", ignoreCase = true) == true || childGender?.trim()?.equals("male", ignoreCase = true) == true
+                val isGirl = childGender?.trim()?.equals("girl", ignoreCase = true) == true || childGender?.trim()?.equals("female", ignoreCase = true) == true
+
                 // 1. Load Bitmap into TensorImage
                 var tensorImage = TensorImage(DataType.UINT8)
                 tensorImage.load(bitmapCopy)
@@ -155,7 +164,7 @@ class RoboflowContentDetector(private val context: Context) {
                 tfl.run(tensorImage.buffer, outWrapper)
 
                 // 3. Parse predictions from YOLOv8 format
-                val raw = parseYoloV8Predictions(outBuffer, originalWidth, originalHeight, shouldLogDetails)
+                val raw = parseYoloV8Predictions(outBuffer, originalWidth, originalHeight, shouldLogDetails, isBoy, isGirl)
 
                 // 4. NMS
                 val nms = nonMaxSuppression(raw)
@@ -169,17 +178,17 @@ class RoboflowContentDetector(private val context: Context) {
                     }
                 }
 
-                // 5. If full-screen mode is enabled and ANY NSFW is detected, return full-screen prediction
                 if (USE_FULLSCREEN_MODE && nms.isNotEmpty()) {
-                    val maxConfidence = nms.maxByOrNull { it.confidence }?.confidence ?: 0.5f
+                    val maxPred = nms.maxByOrNull { it.confidence }
+                    val maxConfidence = maxPred?.confidence ?: 0.5f
                     val fullScreenPrediction = Prediction(
                         x = originalWidth / 2f,
                         y = originalHeight / 2f,
                         w = originalWidth.toFloat(),
                         h = originalHeight.toFloat(),
                         confidence = maxConfidence,
-                        className = CLASS_NAME,
-                        classId = 0,
+                        className = maxPred?.className ?: "unknown",
+                        classId = maxPred?.classId ?: 0,
                         isFullScreen = true
                     )
 
@@ -197,11 +206,17 @@ class RoboflowContentDetector(private val context: Context) {
         }
     }
 
+    /**
+     * Parse YOLOv8 format predictions for SINGLE-CLASS model
+     * Format: [num_features, num_anchors] where features = [x, y, w, h, class_score]
+     */
     private fun parseYoloV8Predictions(
         output: Array<FloatArray>,
         originalWidth: Int,
         originalHeight: Int,
-        logDetails: Boolean
+        logDetails: Boolean,
+        isBoy: Boolean,
+        isGirl: Boolean
     ): List<Prediction> {
         val list = ArrayList<Prediction>(100)
 
@@ -211,55 +226,62 @@ class RoboflowContentDetector(private val context: Context) {
         val ws = output[2]      // Width
         val hs = output[3]      // Height
 
-        // Refresh gender from SharedPreferences at most every 5 seconds
-        val now = System.currentTimeMillis()
-        if (now - lastGenderFetchTime > 5000) {
-            val sharedPrefs = context.getSharedPreferences(com.mansourappdevelopment.androidapp.kidsafe.utils.Constant.KID_SAFE_PREFS, Context.MODE_PRIVATE)
-            cachedGender = sharedPrefs.getString("child_gender", "boy") ?: "boy"
-            lastGenderFetchTime = now
-        }
-        
-        // Define target classes based on gender and Roboflow classes:
-        // 0: bikini, 1: nude, 2: underwear
-        val targetClasses = if (cachedGender.equals("girl", ignoreCase = true)) {
-            // For girls, filter 'nude' and 'underwear'
-            listOf(1, 2)
-        } else {
-            // For boys, filter 'bikini' and 'nude'
-            listOf(0, 1)
-        }
-
         if (logDetails) {
-            Log.d(TAG, "Parsing ${numAnchors} anchors, ${numClasses} classes. Gender=$cachedGender, TargetClasses=$targetClasses. threshold=$CONF_THRESH")
+            Log.d(TAG, "Parsing ${numAnchors} anchors, classes=$numClasses, threshold=$CONF_THRESH")
         }
 
         var detectedCount = 0
 
         for (i in 0 until numAnchors) {
-            // Find the class with highest confidence among the target classes
-            var maxConfidence = -1f
-            var bestClass = -1
-            
-            for (c in targetClasses) {
-                if (c < numClasses) {
-                    val conf = output[4 + c][i]
-                    if (conf > maxConfidence) {
-                        maxConfidence = conf
-                        bestClass = c
+            // Support multi-class by finding the max confidence across all classes
+            var confidence = 0f
+            var classId = 0
+            for (c in 0 until numClasses) {
+                // GENDER FILTERING RULE:
+                // boy (male): flag class 1 (bikinis), class 2 (nudity)
+                // girl (female): flag class 0 (mens underwear), class 2 (nudity)
+                val isBlockedClass = if (isBoy) {
+                    c == 1 || c == 2
+                } else if (isGirl) {
+                    c == 0 || c == 2
+                } else {
+                    if (logDetails && c == 0) {
+                        Log.e(TAG, "GENDER UNRECOGNIZED: '$childGender'. Falling back to NUDITY-ONLY blocking.")
                     }
+                    c == 2 // Fallback: only block nudity if gender is missing
+                }
+
+                if (!isBlockedClass) continue
+
+                val score = output[4 + c][i]
+                if (score > confidence) {
+                    confidence = score
+                    classId = c
                 }
             }
 
-            // If no valid class met the threshold, skip
-            if (bestClass == -1 || maxConfidence < CONF_THRESH) continue
+            if (confidence < CONF_THRESH) continue
 
             detectedCount++
 
-            // Coordinates are normalized [0,1] in YOLOv8
-            val centerX = xs[i] * originalWidth
-            val centerY = ys[i] * originalHeight
-            val width = ws[i] * originalWidth
-            val height = hs[i] * originalHeight
+            val rawX = xs[i]
+            val rawY = ys[i]
+            val rawW = ws[i]
+            val rawH = hs[i]
+            
+            // Auto-detect normalized vs pixel coordinates. 
+            // If they are larger than 2.0f, they are likely in [0, INPUT_SIZE] range instead of [0, 1] range.
+            val isNormalized = (rawX <= 2.0f && rawY <= 2.0f && rawW <= 2.0f && rawH <= 2.0f)
+            
+            val normX = if (isNormalized) rawX else rawX / INPUT_SIZE.toFloat()
+            val normY = if (isNormalized) rawY else rawY / INPUT_SIZE.toFloat()
+            val normW = if (isNormalized) rawW else rawW / INPUT_SIZE.toFloat()
+            val normH = if (isNormalized) rawH else rawH / INPUT_SIZE.toFloat()
+
+            val centerX = normX * originalWidth
+            val centerY = normY * originalHeight
+            val width = normW * originalWidth
+            val height = normH * originalHeight
 
             // Validate box dimensions
             if (width < 10f || height < 10f) {
@@ -290,14 +312,7 @@ class RoboflowContentDetector(private val context: Context) {
             }
 
             if (logDetails && detectedCount <= 5) {
-                Log.d(TAG, "Detection #$detectedCount: raw=(${xs[i]}, ${ys[i]}, ${ws[i]}, ${hs[i]}) -> pixel=(${centerX.toInt()}, ${centerY.toInt()}, ${width.toInt()}x${height.toInt()}), conf=${"%.3f".format(maxConfidence)}, classIndex=$bestClass")
-            }
-            
-            val detectedClassName = when (bestClass) {
-                0 -> "bikini"
-                1 -> "nude"
-                2 -> "underwear"
-                else -> "unknown"
+                Log.d(TAG, "Detection #$detectedCount: raw=(${rawX}, ${rawY}, ${rawW}, ${rawH}) -> pixel=(${centerX.toInt()}, ${centerY.toInt()}, ${width.toInt()}x${height.toInt()}), conf=${"%.3f".format(confidence)}")
             }
 
             list.add(
@@ -306,15 +321,15 @@ class RoboflowContentDetector(private val context: Context) {
                     y = centerY,
                     w = width,
                     h = height,
-                    confidence = maxConfidence,
-                    className = detectedClassName,
-                    classId = bestClass
+                    confidence = confidence,
+                    className = "class_$classId",
+                    classId = classId
                 )
             )
         }
 
         if (logDetails) {
-            Log.d(TAG, "Total valid detections for $cachedGender: ${list.size}")
+            Log.d(TAG, "Total valid detections: ${list.size}")
         }
 
         return list

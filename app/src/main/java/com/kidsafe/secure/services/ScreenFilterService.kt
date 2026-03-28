@@ -3,6 +3,7 @@ package com.kidsafe.secure.services
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.content.res.Resources
 import android.graphics.*
 import android.hardware.display.DisplayManager
@@ -14,6 +15,7 @@ import android.media.projection.MediaProjectionManager
 import android.os.*
 import android.util.Log
 import android.view.*
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.mansourappdevelopment.androidapp.kidsafe.R
 import com.kidsafe.secure.nsfw.BlurOverlayView
@@ -27,14 +29,17 @@ class ScreenFilterService : Service() {
     companion object {
         private const val TAG = "AegistNet-ScreenFilter"
         private const val NOTIFICATION_ID = 1001
-        private const val PROCESS_INTERVAL_MS = 33L // 30 FPS
+
+        // ── Speed knobs ──────────────────────────────────────────────────────────
+        // 25ms = 40 FPS heartbeat. We will NOT process 40 FPS, we will drop frames 
+        // using the isProcessing lock. This means the second the CPU finishes one frame, 
+        // it instantly grabs the VERY NEXT frame without any "dead air" wait gaps!
+        private const val PROCESS_INTERVAL_MS = 25L
         private const val MAX_INFERENCE_TIME_MS = 300L
 
-        // CRITICAL: Number of consecutive clean frames before hiding overlay
-        // This prevents brief flicker when scrolling past NSFW content
-        // Increased to 10 to handle ML model prediction inconsistencies on static images
-        // At 20 FPS (50ms intervals), 10 frames = 500ms delay before hiding
-        private const val CLEAN_FRAMES_THRESHOLD = 3
+        // How many consecutive clean frames before hiding overlay.
+        // 1 frame × 300ms = instant dismissal once content is gone.
+        private const val CLEAN_FRAMES_THRESHOLD = 1
 
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_DATA = "data"
@@ -52,7 +57,7 @@ class ScreenFilterService : Service() {
     private var screenHeight = 0
     private var screenDensity = 0
 
-    private var detectionThreshold = 0.6f
+    private var detectionThreshold = 0.3f
 
     // Aggressive downscale for faster inference
     private val DETECTION_SCALE_FACTOR = 0.4f
@@ -70,7 +75,13 @@ class ScreenFilterService : Service() {
     private var isRunning = true
     private var isOverlayShowing = false
 
-    // CRITICAL FIX: Track consecutive clean frames properly
+    // Timestamp when overlay was last shown — used to enforce a minimum display time
+    // so a single false-clean frame can't immediately dismiss the overlay.
+    // 300ms is enough to absorb a couple of frames if FLAG_SECURE bleeds through.
+    private var overlayShownAt = 0L
+    private val MIN_OVERLAY_SHOW_MS = 300L  // 300ms minimum — fast dismiss when content is gone
+
+    // Count how many consecutive clean frames we've seen while overlay is showing
     private var consecutiveCleanFrames = 0
 
     // Performance tracking
@@ -90,8 +101,9 @@ class ScreenFilterService : Service() {
         startForegroundNotification()
 
         try {
+            Log.d(TAG, "→ Using local TFLite model for detection")
             detector = RoboflowContentDetector(this)
-            Log.d(TAG, "✓ Detector initialized")
+            Log.d(TAG, "✓ YOLO detector initialized")
         } catch (e: Exception) {
             Log.e(TAG, "✗ Detector initialization failed", e)
             stopSelf()
@@ -114,9 +126,14 @@ class ScreenFilterService : Service() {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_SECURE,  // ADD THIS
-                PixelFormat.TRANSLUCENT
-            )
+                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                        WindowManager.LayoutParams.FLAG_DIM_BEHIND or   // ← nuclear opacity: blacks out everything behind
+                        WindowManager.LayoutParams.FLAG_SECURE,
+                PixelFormat.OPAQUE
+            ).also { lp ->
+                lp.screenBrightness = 1.0f
+                lp.dimAmount = 1.0f  // 1.0 = completely black behind — compositor has NO choice
+            }
 
             val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
             windowManager.addView(blurOverlay, params)
@@ -124,7 +141,7 @@ class ScreenFilterService : Service() {
             // Start hidden
             blurOverlay?.visibility = View.GONE
 
-            Log.d(TAG, "✓ Overlay initialized with FLAG_SECURE (invisible to screen capture)")
+            Log.d(TAG, "✓ Overlay initialized with FLAG_SECURE (should be invisible to screen capture)")
 
         } catch (e: Exception) {
             Log.e(TAG, "✗ Overlay setup failed", e)
@@ -140,13 +157,13 @@ class ScreenFilterService : Service() {
         Log.d(TAG, "═══════════════════════════════════════")
         Log.d(TAG, "🚀 LAYER-BASED DETECTION MODE")
         Log.d(TAG, "═══════════════════════════════════════")
-        Log.d(TAG, "→ Model: Bikini_Model(Version2)")
+        Log.d(TAG, "→ Model: Updated_Current_Model")
         Log.d(TAG, "→ Threshold: ${(detectionThreshold * 100).toInt()}%")
         Log.d(TAG, "→ Detection: ${(DETECTION_SCALE_FACTOR * 100).toInt()}% resolution")
         Log.d(TAG, "→ Check interval: ${PROCESS_INTERVAL_MS}ms")
         Log.d(TAG, "→ Clean frame threshold: $CLEAN_FRAMES_THRESHOLD")
         Log.d(TAG, "→ Architecture:")
-        Log.d(TAG, "   Layer 3: Blur Overlay (user sees)")
+        Log.d(TAG, "   Layer 3: Blur Overlay (user sees, FLAG_SECURE)")
         Log.d(TAG, "   Layer 2: Screen capture (model sees)")
         Log.d(TAG, "   Layer 1: Actual screen content")
         Log.d(TAG, "═══════════════════════════════════════")
@@ -212,112 +229,113 @@ class ScreenFilterService : Service() {
 
             Log.d(TAG, "✓ MediaProjection active - capturing BELOW overlay layer")
 
+            // Start the decoupled AI inference loop
+            startInferenceLoop()
+
         } catch (e: Exception) {
             Log.e(TAG, "✗ Projection initialization failed", e)
             stopSelf()
         }
     }
 
+    private val frameLock = Object()
+    private var latestAvailableImage: Image? = null
+
+    // This is fired extremely fast by Android whenever pixels visually change.
+    // It's critical this finishes in microseconds to never stall the OS buffer.
     private fun processFrame(reader: ImageReader) {
-        if (!isRunning) {
-            reader.acquireLatestImage()?.close()
-            return
+        val image = reader.acquireLatestImage() ?: return
+        
+        synchronized(frameLock) {
+            // Free the older un-processed frame so Android doesn't run out of memory
+            latestAvailableImage?.close() 
+            // Save the absolute newest frame for the AI to eventually pick up
+            latestAvailableImage = image
         }
+    }
 
-        val now = System.currentTimeMillis()
-
-        // Time throttle
-        val timeSinceLastProcess = now - lastProcessTime
-        if (timeSinceLastProcess < PROCESS_INTERVAL_MS) {
-            reader.acquireLatestImage()?.close()
-            return
-        }
-
-        // Prevent concurrent processing
-        if (!isProcessing.compareAndSet(false, true)) {
-            reader.acquireLatestImage()?.close()
-            return
-        }
-
-        val image = reader.acquireLatestImage()
-        if (image == null) {
-            isProcessing.set(false)
-            return
-        }
-
-        inferenceStartTime = now
-        lastProcessTime = now
-
+    private fun startInferenceLoop() {
         scope.launch(Dispatchers.Default) {
-            var detectionBitmap: Bitmap? = null
-            try {
-                // Convert screen capture to bitmap
-                val fullBitmap = imageToBitmapFast(image)
-                image.close()
-
-                if (fullBitmap == null) {
-                    Log.w(TAG, "Failed to convert image")
-                    return@launch
+            while (isRunning) {
+                // 1. Grab the freshest frame off the buffer stack
+                val imageToProcess = synchronized(frameLock) {
+                    val img = latestAvailableImage
+                    latestAvailableImage = null
+                    img
                 }
 
-                totalFrames++
+                // 2. If there's a new frame, convert and analyze it
+                if (imageToProcess != null) {
+                    try {
+                        totalFrames++
+                        inferenceStartTime = System.currentTimeMillis()
 
-                // Downscale for faster inference
-                detectionBitmap = getScaledBitmapForDetection(fullBitmap)
+                        val fullBitmap = imageToBitmapFast(imageToProcess)
+                        imageToProcess.close() // Close immediately to avoid leak
 
-                // Run ML detection
-                val detectionStart = System.currentTimeMillis()
-                val predictions = detector?.detect(detectionBitmap) ?: emptyList()
-                val inferenceTime = System.currentTimeMillis() - detectionStart
-
-                // Track performance
-                inferenceTimes.add(inferenceTime)
-                if (inferenceTimes.size > 10) inferenceTimes.removeAt(0)
-
-                if (inferenceTime > MAX_INFERENCE_TIME_MS) {
-                    skippedFrames++
-                    if (skippedFrames % 5 == 0) {
-                        Log.w(TAG, "⚠️ Slow inference: ${inferenceTime}ms")
+                        if (fullBitmap != null) {
+                            runSingleInferencePass(fullBitmap)
+                        } else {
+                            Log.w(TAG, "Failed to convert image")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Frame processing error", e)
+                        try { imageToProcess.close() } catch (ignored: Exception) {}
                     }
                 }
 
-                // Filter by threshold
-                val filteredPredictions = predictions.filter { it.confidence >= detectionThreshold }
+                // 3. Sleep briefly before checking for extremely fast new frames again
+                // This naturally completely prevents any frames from stacking up. 
+                // We do not need an `isProcessing` lock anymore!
+                kotlinx.coroutines.delay(PROCESS_INTERVAL_MS)
+            }
+        }
+    }
 
-                // Log stats every 30s
-                if (now - lastStatsLog > 30000) {
-                    val avgInference = if (inferenceTimes.isNotEmpty()) inferenceTimes.average() else 0.0
-                    val detectionRate = if (totalFrames > 0) (detectedFrames.toFloat() / totalFrames * 100) else 0f
-                    Log.d(TAG, "═══════════════════════════════════════")
-                    Log.d(TAG, "📊 Stats:")
-                    Log.d(TAG, "  Frames: $totalFrames (${skippedFrames} slow)")
-                    Log.d(TAG, "  Detections: $detectedFrames (${String.format("%.1f", detectionRate)}%)")
-                    Log.d(TAG, "  Avg inference: ${String.format("%.0f", avgInference)}ms")
-                    Log.d(TAG, "  Overlay state: ${if (isOverlayShowing) "VISIBLE" else "hidden"}")
-                    Log.d(TAG, "  Clean frame counter: $consecutiveCleanFrames")
-                    Log.d(TAG, "═══════════════════════════════════════")
-                    lastStatsLog = now
-                }
+    private suspend fun runSingleInferencePass(fullBitmap: Bitmap) {
+        var detectionBitmap: Bitmap? = null
+        try {
+            // Downscale for faster inference
+            detectionBitmap = getScaledBitmapForDetection(fullBitmap)
 
-                // Update overlay visibility
-                withContext(Dispatchers.Main.immediate) {
-                    updateOverlayVisibility(filteredPredictions, inferenceTime, fullBitmap)
-                }
+            // Run YOLO for maximum speed
+            val detectionStart = System.currentTimeMillis()
+            val predictions = detector?.detect(detectionBitmap) ?: emptyList<Prediction>()
+            val inferenceTime = System.currentTimeMillis() - detectionStart
+            
+            // --- DEBUGGER: Inference Timing ---
+            Log.d("PerformanceTracker", "Model Scan Time: ${inferenceTime}ms. Found ${predictions.size} items.")
 
-            } catch (e: Exception) {
-                Log.e(TAG, "Frame processing error", e)
-            } finally {
-                if (detectionBitmap != scaledBitmap) {
-                    detectionBitmap?.recycle()
+            // Track performance
+            inferenceTimes.add(inferenceTime)
+            if (inferenceTimes.size > 10) inferenceTimes.removeAt(0)
+
+            if (inferenceTime > MAX_INFERENCE_TIME_MS) {
+                skippedFrames++
+                if (skippedFrames % 5 == 0) {
+                    Log.w(TAG, "⚠️ Slow inference: ${inferenceTime}ms")
                 }
-                isProcessing.set(false)
+            }
+
+            // Filter by threshold
+            val filteredPredictions = predictions.filter { it.confidence >= detectionThreshold }
+
+            // Update overlay visibility
+            withContext(Dispatchers.Main.immediate) {
+                updateOverlayVisibility(filteredPredictions, inferenceTime, fullBitmap)
+            }
+
+        } finally {
+            if (detectionBitmap != scaledBitmap) {
+                detectionBitmap?.recycle()
             }
         }
     }
 
     private fun getScaledBitmapForDetection(fullBitmap: Bitmap): Bitmap {
-        val targetWidth = (screenWidth * DETECTION_SCALE_FACTOR).toInt()
-        val targetHeight = (screenHeight * DETECTION_SCALE_FACTOR).toInt()
+        // Scale directly to the TFLite model's expected shape to skip double-scaling overhead
+        val targetWidth = RoboflowContentDetector.INPUT_SIZE
+        val targetHeight = RoboflowContentDetector.INPUT_SIZE
 
         if (scaledBitmap == null ||
             scaledBitmap?.width != targetWidth ||
@@ -336,80 +354,48 @@ class ScreenFilterService : Service() {
         return scaledBitmap!!
     }
 
-    /**
-     * FIXED OVERLAY LOGIC:
-     *
-     * The overlay is positioned ABOVE the MediaProjection capture layer, so:
-     * - The camera/model always sees the real screen (underneath the overlay)
-     * - We can continuously detect even when overlay is shown
-     * - Show overlay immediately when NSFW detected
-     * - Hide overlay only after N consecutive clean frames
-     */
     private fun updateOverlayVisibility(predictions: List<Prediction>, inferenceTime: Long, bitmap: Bitmap?) {
         try {
             val hasNsfwContent = predictions.isNotEmpty()
 
             if (hasNsfwContent) {
-                consecutiveCleanFrames = 0
-
-                // ALWAYS update the blur content so it's dynamic
-                blurOverlay?.updatePredictions(predictions, bitmap)
-
                 if (!isOverlayShowing) {
-                    detectedFrames++
                     isOverlayShowing = true
+                    detectedFrames++
+
+                    // Step 1: Show the overlay instantly
+                    blurOverlay?.updatePredictions(predictions)
                     blurOverlay?.visibility = View.VISIBLE
 
+                    // Step 2 & 3: Automatically trigger back button to exit user from the bad frame
+                    NsfwActionManager.performGoBack()
+
                     val responseTime = System.currentTimeMillis() - inferenceStartTime
-                    Log.w(TAG, "🚨 NSFW DETECTED! Response: ${responseTime}ms (inference: ${inferenceTime}ms)")
-                    predictions.take(2).forEachIndexed { i, p ->
-                        // ADD POSITION INFO
-                        Log.d(TAG, "  [$i]: ${p.className} ${(p.confidence * 100).toInt()}% at (${p.x.toInt()},${p.y.toInt()}) size=${p.w.toInt()}x${p.h.toInt()}")
-                    }
                     
-                    // Trigger Back or Home Action
-                    triggerNsfwAction()
-                } else {
-                    // LOG EVERY FRAME when overlay is showing to see if position changes
-                    Log.d(TAG, "🚨 Frame $totalFrames - Still detecting:")
-                    predictions.take(2).forEachIndexed { i, p ->
-                        Log.d(TAG, "  [$i]: ${p.className} ${(p.confidence * 100).toInt()}% at (${p.x.toInt()},${p.y.toInt()}) size=${p.w.toInt()}x${p.h.toInt()}")
-                    }
-                }
-            } else {
-                consecutiveCleanFrames++
-                Log.d(TAG, "✅ Clean frame $consecutiveCleanFrames/$CLEAN_FRAMES_THRESHOLD")
+                    // --- DEBUGGER: Overlay Reaction Timing ---
+                    val debugMsg = "🚨 Reaction Time: Model took ${inferenceTime}ms | Overlay took ${responseTime - inferenceTime}ms | Total from capture to Block: ${responseTime}ms"
+                    Log.w("PerformanceTracker", debugMsg)
+                    
+                    // Show a Toast message on the screen so you can see it physically!
+                    Toast.makeText(applicationContext, debugMsg, Toast.LENGTH_LONG).show()
 
-                if (isOverlayShowing) {
-                    if (consecutiveCleanFrames >= CLEAN_FRAMES_THRESHOLD) {
-                        isOverlayShowing = false
-                        blurOverlay?.updatePredictions(emptyList(), null)
+                    // Step 4: Hide overlay after back button so model can detect again.
+                    // We hold the overlay for 1.5 seconds (1500ms) to ensure the Android
+                    // screen-closing animation completes peacefully. If we hide it too fast
+                    // (e.g. 500ms), the poor POCO C75 might still be animating the explicit image,
+                    // causing the model to see it and trigger the whole process a SECOND time!
+                    scope.launch(Dispatchers.Main.immediate) {
+                        kotlinx.coroutines.delay(1500)
+                        blurOverlay?.updatePredictions(emptyList())
                         blurOverlay?.visibility = View.GONE
-
-                        val responseTime = System.currentTimeMillis() - inferenceStartTime
-                        Log.w(TAG, "✅ OVERLAY HIDDEN after $consecutiveCleanFrames clean frames (${responseTime}ms)")
-                    } else {
-                        Log.d(TAG, "⏳ Waiting for ${CLEAN_FRAMES_THRESHOLD - consecutiveCleanFrames} more clean frames...")
+                        isOverlayShowing = false
+                        Log.w(TAG, "✅ Overlay hidden, ready to detect again")
                     }
                 }
             }
+            // No else block needed because the Coroutine perfectly handles hiding the overlay automatically
         } catch (e: Exception) {
             Log.e(TAG, "UI update error", e)
-        }
-    }
-
-    private fun triggerNsfwAction() {
-        if (NsfwActionAccessibilityService.isServiceEnabled) {
-            Log.d(TAG, "Triggering BACK action via AccessibilityService")
-            val intent = Intent(NsfwActionAccessibilityService.ACTION_TRIGGER_BACK)
-            sendBroadcast(intent)
-        } else {
-            Log.d(TAG, "AccessibilityService disabled, falling back to HOME screen")
-            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_HOME)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            startActivity(homeIntent)
         }
     }
 
@@ -479,13 +465,18 @@ class ScreenFilterService : Service() {
 
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("AegistNet Protection")
-            .setContentText("Overlay above capture layer")
+            .setContentText("Overlay active and protecting child")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
 
-        startForeground(NOTIFICATION_ID, notification)
+        // Samsung S24 Ultra (Android 14+) strict crashing enforcement fix
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
     }
 
     override fun onDestroy() {
@@ -512,6 +503,11 @@ class ScreenFilterService : Service() {
 
         processingThread?.quitSafely()
         processingThread = null
+        
+        synchronized(frameLock) {
+            latestAvailableImage?.close()
+            latestAvailableImage = null
+        }
 
         reusableBitmap?.recycle()
         scaledBitmap?.recycle()
@@ -527,7 +523,7 @@ class ScreenFilterService : Service() {
 
         blurOverlay?.let { overlay ->
             try {
-                overlay.cleanup()
+                overlay.destroy() // Use new destroy method
                 (getSystemService(WINDOW_SERVICE) as WindowManager).removeView(overlay)
             } catch (e: Exception) {
                 Log.e(TAG, "Overlay removal error", e)
