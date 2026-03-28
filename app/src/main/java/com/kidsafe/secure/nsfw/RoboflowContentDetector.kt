@@ -164,7 +164,7 @@ class RoboflowContentDetector(private val context: Context) {
                 tfl.run(tensorImage.buffer, outWrapper)
 
                 // 3. Parse predictions from YOLOv8 format
-                val raw = parseYoloV8Predictions(outBuffer, originalWidth, originalHeight, shouldLogDetails, isBoy, isGirl)
+                val raw = parseYoloV8Predictions(outBuffer, originalWidth, originalHeight, shouldLogDetails, childGender, isBoy, isGirl)
 
                 // 4. NMS
                 val nms = nonMaxSuppression(raw)
@@ -215,6 +215,7 @@ class RoboflowContentDetector(private val context: Context) {
         originalWidth: Int,
         originalHeight: Int,
         logDetails: Boolean,
+        childGender: String?,
         isBoy: Boolean,
         isGirl: Boolean
     ): List<Prediction> {

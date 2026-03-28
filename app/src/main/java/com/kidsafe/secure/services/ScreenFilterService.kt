@@ -110,6 +110,29 @@ class ScreenFilterService : Service() {
             return
         }
 
+        // Direct, bulletproof Firebase listener attached exactly to this service!
+        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        if (uid != null) {
+            com.google.firebase.database.FirebaseDatabase.getInstance().getReference("users/childs/$uid/gender")
+                .addValueEventListener(object : com.google.firebase.database.ValueEventListener {
+                    override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                        val gender = snapshot.getValue(String::class.java)
+                        if (gender != null) {
+                            Log.d(TAG, "🔥 ScreenFilter directly caught LIVE GENDER: $gender")
+                            com.mansourappdevelopment.androidapp.kidsafe.utils.SharedPrefsUtils.setStringPreference(this@ScreenFilterService, "child_gender", gender)
+                        } else {
+                            Log.e(TAG, "🔥 ScreenFilter: Firebase returned NULL for gender under UID: $uid")
+                        }
+                    }
+
+                    override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                        Log.e(TAG, "🔥 ScreenFilter: Firebase read failed: ${error.message}")
+                    }
+                })
+        } else {
+            Log.e(TAG, "🔥 ScreenFilter: Current User UID is NULL!")
+        }
+
         setupOverlay()
     }
 
