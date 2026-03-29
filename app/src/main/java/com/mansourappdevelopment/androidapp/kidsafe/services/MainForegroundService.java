@@ -325,34 +325,30 @@ public class MainForegroundService extends Service {
 	}
 
 	public void getApps() {
-		Query query = databaseReference.child("childs").orderByChild("email").equalTo(childEmail);
-		query.addListenerForSingleValueEvent(new ValueEventListener() {
+		if (uid == null) {
+			Log.e(TAG, "getApps: UID is null, cannot fetch apps");
+			return;
+		}
+
+		DatabaseReference appRef = databaseReference.child("childs").child(uid);
+		appRef.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 				if (dataSnapshot.exists()) {
-					// Log.i(TAG, "onDataChange: dataSnapshot value: "+dataSnapshot.getValue());
-					// Log.i(TAG, "onDataChange: dataSnapshot as a string:
-					// "+dataSnapshot.toString());
-					// Log.i(TAG, "onDataChange: dataSnapshot children: " +
-					// dataSnapshot.getChildren());
-					// Log.i(TAG, "onDataChange: dataSnapshot key: " + dataSnapshot.getKey());
-
-					DataSnapshot nodeShot = dataSnapshot.getChildren().iterator().next();
-					Child child = nodeShot.getValue(Child.class);
-					apps = child.getApps();
-					if (child.getGender() != null) {
-						com.mansourappdevelopment.androidapp.kidsafe.utils.SharedPrefsUtils.setStringPreference(MainForegroundService.this, "child_gender", child.getGender());
+					Child child = dataSnapshot.getValue(Child.class);
+					if (child != null) {
+						apps = child.getApps();
+						if (child.getGender() != null) {
+							com.mansourappdevelopment.androidapp.kidsafe.utils.SharedPrefsUtils.setStringPreference(MainForegroundService.this, "child_gender", child.getGender());
+						}
+						Log.i(TAG, "onDataChange: apps loaded via uid, size=" + (apps != null ? apps.size() : "null"));
 					}
-
-					Log.i(TAG, "onDataChange: child name: " + child.getName());
-					// updateAppStats(apps);
-
 				}
 			}
 
 			@Override
 			public void onCancelled(@NonNull DatabaseError databaseError) {
-
+				Log.e(TAG, "getApps: failed", databaseError.toException());
 			}
 		});
 	}
@@ -614,37 +610,25 @@ public class MainForegroundService extends Service {
 
 	@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 	private String getLollipopForegroundAppPackageName() {
-		// Log.i(TAG, "getLollipopForegroundAppPackageName: executed");
 		try {
 			UsageStatsManager usageStatsManager = (UsageStatsManager) this.getSystemService(USAGE_STATS_SERVICE);
-			long milliSecs = 60 * 1000;
-			Date date = new Date();
-			List<UsageStats> foregroundApps = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY,
-					date.getTime() - milliSecs, date.getTime());
-			if (foregroundApps.size() == 0) {
-				Log.i(TAG, "getLollipopForegroundAppPackageName: queryUsageSize: empty");
-			}
-
-			long recentTime = 0;
+			long time = System.currentTimeMillis();
+			android.app.usage.UsageEvents usageEvents = usageStatsManager.queryEvents(time - 1000 * 60, time);
+			android.app.usage.UsageEvents.Event event = new android.app.usage.UsageEvents.Event();
+			
 			String recentPkg = "";
-			for (UsageStats stats : foregroundApps) {
-				/*
-				 * if (i == 0 &&
-				 * !"com.mansourappdevelopment.androidapp.kidsafe".equals(stats.getPackageName()
-				 * )) {
-				 * Log.i(TAG, "PackageName: " + stats.getPackageName() + " " +
-				 * stats.getLastTimeStamp());
-				 * }
-				 */
-				if (stats.getLastTimeStamp() > recentTime) {
-					recentTime = stats.getLastTimeStamp();
-					recentPkg = stats.getPackageName();
+			long latestTime = 0;
+
+			while (usageEvents.hasNextEvent()) {
+				usageEvents.getNextEvent(event);
+				if (event.getEventType() == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND || 
+					event.getEventType() == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
+					if (event.getTimeStamp() > latestTime) {
+						latestTime = event.getTimeStamp();
+						recentPkg = event.getPackageName();
+					}
 				}
-
 			}
-
-			// Log.i(TAG, "getLollipopForegroundAppPackageName: appPackageName: " +
-			// recentPkg);
 			return recentPkg;
 		} catch (Exception e) {
 			e.printStackTrace();
