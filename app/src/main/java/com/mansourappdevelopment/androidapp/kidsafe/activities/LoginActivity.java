@@ -2,6 +2,7 @@ package com.mansourappdevelopment.androidapp.kidsafe.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -94,7 +95,7 @@ public class LoginActivity extends AppCompatActivity {
 				JsonObject jsonObject = new Gson().fromJson(jsonStr, JsonObject.class);
 				if (jsonObject.has("parentEmail")) {
 					String parentEmail = jsonObject.get("parentEmail").getAsString();
-					handleChildAnonymousLogin(parentEmail);
+					handleChildDeviceAuth(parentEmail);
 				} else {
 					Toast.makeText(this, "Invalid QR Code format", Toast.LENGTH_SHORT).show();
 				}
@@ -116,27 +117,44 @@ public class LoginActivity extends AppCompatActivity {
 		barcodeLauncher.launch(options);
 	}
 
-	private void handleChildAnonymousLogin(String parentEmail) {
+	private void handleChildDeviceAuth(String parentEmail) {
 		final LoadingDialogFragment loadingDialogFragment = new LoadingDialogFragment();
 		startLoadingFragment(loadingDialogFragment);
 
-		auth.signInAnonymously().addOnCompleteListener(this, task -> {
-			stopLoadingFragment(loadingDialogFragment);
+		String androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+		if (androidId == null || androidId.isEmpty()) {
+			androidId = "unknown_device_" + System.currentTimeMillis();
+		}
+		
+		String email = androidId + "@aegisnet.child";
+		String password = androidId + "_secure_AegisNet";
+
+		auth.signInWithEmailAndPassword(email, password).addOnCompleteListener(this, task -> {
 			if (task.isSuccessful()) {
-				FirebaseUser user = auth.getCurrentUser();
-				if (user != null) {
-					String anonymousUid = user.getUid();
-					Child child = new Child("Child Device", anonymousUid + "@anonymous.com", parentEmail);
-					databaseReference.child("childs").child(anonymousUid).setValue(child).addOnCompleteListener(dbTask -> {
-						if (dbTask.isSuccessful()) {
-							startChildSignedInActivity();
-						} else {
-							Toast.makeText(LoginActivity.this, "Failed to register child device in database", Toast.LENGTH_SHORT).show();
-						}
-					});
-				}
+				stopLoadingFragment(loadingDialogFragment);
+				// Device already registered, just sign in
+				startChildSignedInActivity();
 			} else {
-				Toast.makeText(LoginActivity.this, "Failed to sign in anonymously", Toast.LENGTH_SHORT).show();
+				// Failed to sign in, assume not registered, attempt creation
+				auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(this, createTask -> {
+					stopLoadingFragment(loadingDialogFragment);
+					if (createTask.isSuccessful()) {
+						FirebaseUser user = auth.getCurrentUser();
+						if (user != null) {
+							String uid = user.getUid();
+							Child child = new Child("Child Device", email, parentEmail);
+							databaseReference.child("childs").child(uid).setValue(child).addOnCompleteListener(dbTask -> {
+								if (dbTask.isSuccessful()) {
+									startChildSignedInActivity();
+								} else {
+									Toast.makeText(LoginActivity.this, "Failed to register child device in database", Toast.LENGTH_SHORT).show();
+								}
+							});
+						}
+					} else {
+						Toast.makeText(LoginActivity.this, "Failed to register device: " + createTask.getException().getMessage(), Toast.LENGTH_LONG).show();
+					}
+				});
 			}
 		});
 	}
