@@ -61,6 +61,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.mansourappdevelopment.androidapp.kidsafe.NotificationChannelCreator.CHANNEL_ID;
+import static com.mansourappdevelopment.androidapp.kidsafe.NotificationChannelCreator.HIGH_PRIORITY_CHANNEL_ID;
+import com.kidsafe.secure.nsfw.NsfwProtectionHelper;
+import android.app.NotificationManager;
 
 public class MainForegroundService extends Service {
 	public static final int NOTIFICATION_ID = 27;
@@ -261,6 +264,47 @@ public class MainForegroundService extends Service {
 			@Override
 			public void onCancelled(@NonNull DatabaseError databaseError) {
 
+			}
+		});
+
+		DatabaseReference nudityFilterRef = firebaseDatabase.getReference("users/childs/" + uid + "/contentFilters/nudity");
+		nudityFilterRef.addValueEventListener(new ValueEventListener() {
+			@Override
+			public void onDataChange(@NonNull DataSnapshot snapshot) {
+				Boolean isEnabled = snapshot.getValue(Boolean.class);
+				if (isEnabled != null && isEnabled) {
+					// Filter enabled
+					if (!NsfwProtectionHelper.INSTANCE.isServiceRunning(MainForegroundService.this)) {
+						String topApp = getTopAppPackageName();
+						if (topApp != null && !topApp.equals(getPackageName())) {
+							// App is not in foreground, notify child to open app
+							Intent intent = new Intent(MainForegroundService.this, ChildSignedInActivity.class);
+							intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+							PendingIntent pendingIntent = PendingIntent.getActivity(MainForegroundService.this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+
+							NotificationCompat.Builder builder = new NotificationCompat.Builder(MainForegroundService.this, HIGH_PRIORITY_CHANNEL_ID)
+									.setSmallIcon(R.drawable.ic_kidsafe)
+									.setContentTitle("Parental Filter Re-Enabled")
+									.setContentText("Tap here to resume screen protection.")
+									.setPriority(NotificationCompat.PRIORITY_HIGH)
+									.setContentIntent(pendingIntent)
+									.setAutoCancel(true);
+
+							NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+							if (notificationManager != null) {
+							    notificationManager.notify(777, builder.build());
+							}
+						}
+					}
+				} else {
+					// Filter disabled, stop service
+					NsfwProtectionHelper.INSTANCE.stopScreenFilterService(MainForegroundService.this);
+				}
+			}
+
+			@Override
+			public void onCancelled(@NonNull DatabaseError error) {
+				Log.e(TAG, "Failed to read nudity filter value", error.toException());
 			}
 		});
 
