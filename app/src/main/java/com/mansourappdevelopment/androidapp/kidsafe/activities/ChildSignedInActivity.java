@@ -186,13 +186,18 @@ public class ChildSignedInActivity extends AppCompatActivity
 				NsfwProtectionHelper.INSTANCE.requestMediaProjection(this);
 			} else {
 				Toast.makeText(this, "Overlay permission required for NSFW protection", Toast.LENGTH_LONG).show();
+				if (user != null) {
+					FirebaseDatabase.getInstance().getReference("users/childs/" + user.getUid() + "/contentFilters/nudity").setValue(false);
+				}
 			}
 		} else if (requestCode == NsfwProtectionHelper.MEDIA_PROJECTION_REQUEST_CODE) {
 			if (resultCode == RESULT_OK && data != null) {
 				NsfwProtectionHelper.INSTANCE.startScreenFilterService(this, resultCode, data, 0.6f);
 			} else {
-				Toast.makeText(this, "Screen recording permission required for NSFW protection", Toast.LENGTH_LONG)
-						.show();
+				Toast.makeText(this, "Screen recording permission required for NSFW protection", Toast.LENGTH_LONG).show();
+				if (user != null) {
+					FirebaseDatabase.getInstance().getReference("users/childs/" + user.getUid() + "/contentFilters/nudity").setValue(false);
+				}
 			}
 		}
 	}
