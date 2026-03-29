@@ -61,7 +61,9 @@ public class AccountUtils {
 	
 	public static void logout(Context context) {
 		FirebaseAuth.getInstance().signOut();
-		context.startActivity(new Intent(context, LoginActivity.class));
+		Intent loginIntent = new Intent(context, LoginActivity.class);
+		loginIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+		context.startActivity(loginIntent);
 		
 		closeServices(context);
 	}

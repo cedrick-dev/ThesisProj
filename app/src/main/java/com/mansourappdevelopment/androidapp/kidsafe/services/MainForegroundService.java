@@ -308,6 +308,25 @@ public class MainForegroundService extends Service {
 			}
 		});
 
+		Query logoutRequestQuery = databaseReference.child("childs").child(uid).child("logoutRequest");
+		logoutRequestQuery.addValueEventListener(new ValueEventListener() {
+			@Override
+			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+				if (dataSnapshot.exists()) {
+					String status = dataSnapshot.getValue(String.class);
+					if ("approved".equals(status)) {
+						databaseReference.child("childs").child(uid).child("logoutRequest").setValue("none");
+						com.mansourappdevelopment.androidapp.kidsafe.utils.AccountUtils.logout(MainForegroundService.this);
+						stopSelf();
+					}
+				}
+			}
+
+			@Override
+			public void onCancelled(@NonNull DatabaseError databaseError) {
+			}
+		});
+
 		phoneStateReceiver = new PhoneStateReceiver(user);
 		IntentFilter callIntentFilter = new IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED);
 		registerReceiver(phoneStateReceiver, callIntentFilter);

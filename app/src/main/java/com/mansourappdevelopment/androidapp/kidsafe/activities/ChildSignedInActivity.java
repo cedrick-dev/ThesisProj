@@ -76,7 +76,7 @@ public class ChildSignedInActivity extends AppCompatActivity
 			btnSettings.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View v) {
-					startPasswordValidationDialogFragment();
+					onValidationOk();
 				}
 			});
 			txtTitle = findViewById(R.id.txtTitle);

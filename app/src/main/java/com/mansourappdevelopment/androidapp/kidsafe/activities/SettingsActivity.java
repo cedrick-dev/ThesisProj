@@ -79,6 +79,7 @@ public class SettingsActivity extends AppCompatActivity implements OnLanguageSel
 		
 		
 		btnChangePassword = findViewById(R.id.btnChangePassword);
+		btnChangePassword.setVisibility(View.GONE);
 		btnChangePassword.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View view) {
@@ -88,6 +89,7 @@ public class SettingsActivity extends AppCompatActivity implements OnLanguageSel
 		
 		
 		btnDeleteAccount = findViewById(R.id.btnDeleteAccount);
+		btnDeleteAccount.setVisibility(View.GONE);
 		btnDeleteAccount.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View view) {
@@ -213,7 +215,12 @@ public class SettingsActivity extends AppCompatActivity implements OnLanguageSel
 	
 	@Override
 	public void onConfirm() {
-		AccountUtils.logout(this);
+		com.google.firebase.auth.FirebaseUser user = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+		if (user != null) {
+			String uid = user.getUid();
+			com.google.firebase.database.FirebaseDatabase.getInstance().getReference("users").child("childs").child(uid).child("logoutRequest").setValue("pending");
+			Toast.makeText(this, "Logout request sent to parent. Waiting for approval.", Toast.LENGTH_LONG).show();
+		}
 	}
 	
 	@Override
