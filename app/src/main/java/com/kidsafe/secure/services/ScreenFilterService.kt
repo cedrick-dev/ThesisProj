@@ -22,7 +22,14 @@ import com.kidsafe.secure.nsfw.BlurOverlayView
 import com.kidsafe.secure.nsfw.Prediction
 import com.kidsafe.secure.nsfw.RoboflowContentDetector
 import kotlinx.coroutines.*
+import kotlinx.coroutines.tasks.await
 import java.util.concurrent.atomic.AtomicBoolean
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.storage.FirebaseStorage
+import java.io.ByteArrayOutputStream
+import java.util.UUID
+import android.app.usage.UsageStatsManager
 
 class ScreenFilterService : Service() {
 
@@ -90,6 +97,9 @@ class ScreenFilterService : Service() {
     private var skippedFrames = 0
     private var lastStatsLog = System.currentTimeMillis()
     private val inferenceTimes = mutableListOf<Long>()
+
+    private var lastIncidentReportTime = 0L
+    private val INCIDENT_THROTTLE_MS = 10000L // 10 seconds per incident report
 
     private var processingThread: HandlerThread? = null
 
@@ -393,6 +403,22 @@ class ScreenFilterService : Service() {
                     // Step 2 & 3: Automatically trigger back button to exit user from the bad frame
                     NsfwActionManager.performGoBack()
 
+                    // Try to report incident to parent app
+                    if (bitmap != null) {
+                        val currentTime = System.currentTimeMillis()
+                        if (currentTime - lastIncidentReportTime > INCIDENT_THROTTLE_MS) {
+                            lastIncidentReportTime = currentTime
+                            // create a copy of the detected frame, maybe resized, so we can upload it safely
+                            // without holding lock on the ongoing processing
+                            val reportBitmap = Bitmap.createScaledBitmap(bitmap, bitmap.width / 2, bitmap.height / 2, true)
+                            val highestConf = predictions.maxByOrNull { it.confidence }?.confidence ?: 0f
+                            
+                            scope.launch(Dispatchers.IO) {
+                                reportNsfwIncident(reportBitmap, highestConf)
+                            }
+                        }
+                    }
+
                     val responseTime = System.currentTimeMillis() - inferenceStartTime
                     
                     // --- DEBUGGER: Overlay Reaction Timing ---
@@ -467,6 +493,86 @@ class ScreenFilterService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "Bitmap conversion failed", e)
             return null
+        }
+    }
+
+    private suspend fun reportNsfwIncident(bitmap: Bitmap, confidence: Float) {
+        try {
+            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+            
+            // Get foreground app name
+            var appPackage = "unknown"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
+                val time = System.currentTimeMillis()
+                // Use queryEvents for exact foreground accuracy instead of aggregated stats
+                val usageEvents = usageStatsManager.queryEvents(time - 1000 * 60, time)
+                val event = android.app.usage.UsageEvents.Event()
+                var latestTime = 0L
+                
+                while (usageEvents.hasNextEvent()) {
+                    usageEvents.getNextEvent(event)
+                    if (event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND || 
+                        event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
+                        if (event.timeStamp > latestTime) {
+                            latestTime = event.timeStamp
+                            appPackage = event.packageName
+                        }
+                    }
+                }
+            }
+
+            var appName = appPackage
+            try {
+                // If UsageStats failed to find it recently, try AccessibilityService (instant)
+                if (appPackage == "unknown" && NsfwActionManager.accessibilityService != null) {
+                    val activePackage = NsfwActionManager.accessibilityService?.rootInActiveWindow?.packageName?.toString()
+                    if (!activePackage.isNullOrEmpty()) {
+                        appPackage = activePackage
+                        appName = activePackage
+                    }
+                }
+
+                val pm = packageManager
+                val ai = pm.getApplicationInfo(appPackage, 0)
+                appName = pm.getApplicationLabel(ai).toString()
+            } catch (e: Exception) {
+                // Ignore, keep package name
+            }
+
+            Log.d(TAG, "Reporting NSFW incident from app: $appName")
+
+            // Compress to JPEG byte array
+            val baos = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 60, baos)
+            val data = baos.toByteArray()
+            bitmap.recycle() // free memory
+            
+            // Encode directly to Base64 to bypass all Firebase Storage issues
+            val base64Image = android.util.Base64.encodeToString(data, android.util.Base64.DEFAULT)
+            val dataUri = "data:image/jpeg;base64,$base64Image"
+
+            val dbRef = FirebaseDatabase.getInstance().getReference("users/childs/$uid/nsfw_incidents").push()
+            val incidentId = dbRef.key ?: UUID.randomUUID().toString()
+
+            val incidentMap = hashMapOf<String, Any>(
+                "timestamp" to System.currentTimeMillis(),
+                "appName" to appName,
+                "appPackage" to appPackage,
+                "imageUrl" to dataUri, // Directly store base64 in the database
+                "confidence" to confidence,
+                "deviceModel" to Build.MODEL,
+                "actionTaken" to "Blocked"
+            )
+
+            dbRef.setValue(incidentMap).addOnSuccessListener {
+                Log.d(TAG, "Successfully created NSFW incident record in DB with Base64 Image!")
+            }.addOnFailureListener { e ->
+                Log.e(TAG, "Failed to save NSFW incident to DB", e)
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to report NSFW incident", e)
         }
     }
 
