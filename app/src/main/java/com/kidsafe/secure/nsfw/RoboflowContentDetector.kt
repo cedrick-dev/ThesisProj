@@ -239,6 +239,9 @@ class RoboflowContentDetector(private val context: Context) {
             var classId = 0
             for (c in 0 until numClasses) {
                 // GENDER FILTERING RULE:
+                // class 0 (bikinis)
+                // class 1 (nudity)
+                // class 2 (mens underwear)
                 // boy (male): flag class 0 (bikinis), class 1 (nudity)
                 // girl (female): flag class 2 (mens underwear), class 1 (nudity)
                 val isBlockedClass = if (isBoy) {
