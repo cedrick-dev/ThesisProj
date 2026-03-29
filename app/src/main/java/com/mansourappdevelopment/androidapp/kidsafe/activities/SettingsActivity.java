@@ -161,7 +161,7 @@ public class SettingsActivity extends AppCompatActivity implements OnLanguageSel
 	}
 	
 	private void visitWebsite() {
-		Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://xmansour.github.io/AegistNet"));
+		Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://final-thesis-repo-n6pf.vercel.app/"));
 		startActivity(intent);
 	}
 	
