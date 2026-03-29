@@ -19,6 +19,7 @@ import com.mansourappdevelopment.androidapp.kidsafe.R;
 import com.mansourappdevelopment.androidapp.kidsafe.dialogfragments.LoadingDialogFragment;
 import com.mansourappdevelopment.androidapp.kidsafe.utils.Constant;
 import com.mansourappdevelopment.androidapp.kidsafe.utils.LocaleUtils;
+import com.mansourappdevelopment.androidapp.kidsafe.utils.SharedPrefsUtils;
 import com.mansourappdevelopment.androidapp.kidsafe.models.Child;
 
 import com.journeyapps.barcodescanner.ScanOptions;
@@ -63,7 +64,17 @@ public class LoginActivity extends AppCompatActivity {
 	@Override
 	protected void onStart() {
 		super.onStart();
-		// Automatically check if already logged in
+		// On a fresh install, SharedPreferences are wiped, so CHILD_FIRST_LAUNCH
+		// defaults to true. Use this as the signal to clear any stale Firebase
+		// anonymous session so the user must go through onboarding again.
+		boolean isFirstLaunch = SharedPrefsUtils.getBooleanPreference(
+				this, Constant.CHILD_FIRST_LAUNCH, true);
+		if (isFirstLaunch) {
+			// Sign out any persisted session (happens after reinstall)
+			auth.signOut();
+			return; // Stay on login screen
+		}
+		// Returning user — auto-navigate if still authenticated
 		FirebaseUser user = auth.getCurrentUser();
 		if (user != null) {
 			startChildSignedInActivity();
@@ -101,6 +112,7 @@ public class LoginActivity extends AppCompatActivity {
 		options.setCameraId(0);
 		options.setBeepEnabled(false);
 		options.setBarcodeImageEnabled(true);
+		options.setOrientationLocked(true); // Lock to portrait
 		barcodeLauncher.launch(options);
 	}
 

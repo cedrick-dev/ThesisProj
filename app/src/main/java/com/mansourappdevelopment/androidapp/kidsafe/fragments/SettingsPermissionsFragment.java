@@ -82,7 +82,7 @@ public class SettingsPermissionsFragment extends Fragment implements CompoundBut
 			@Override
 			public void onClick(View v) {
 				if (checkAllPermissions()) {
-					onFragmentChangeListener.onFragmentChange(Constant.PERMISSIONS_FRAGMENTS_FINISH);
+					onFragmentChangeListener.onFragmentChange(Constant.PERMISSIONS_ACCESSIBILITY_FRAGMENT);
 				} else {
 					startInformationDialogFragment(getString(R.string.please_allow_permissions));
 				}

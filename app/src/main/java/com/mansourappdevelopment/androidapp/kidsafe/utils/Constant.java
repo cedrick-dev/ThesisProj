@@ -52,6 +52,7 @@ public class Constant {
 	public static final int PERMISSIONS_LOCATION_FRAGMENT = 3;
 	public static final int PERMISSIONS_SETTINGS_FRAGMENT = 4;
 	public static final int PERMISSIONS_FRAGMENTS_FINISH = 5;
+	public static final int PERMISSIONS_ACCESSIBILITY_FRAGMENT = 6;
 	public static final String KID_SAFE_PREFS = "com.mansourappdevelopment.androidapp.kidsafe.utils.KID_SAFE_PREFS";
 	public static final String CHILD_FIRST_LAUNCH = "com.mansourappdevelopment.androidapp.kidsafe.utils.CHILD_FIRST_LAUNCH";
 	

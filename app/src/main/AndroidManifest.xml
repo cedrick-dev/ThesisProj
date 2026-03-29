@@ -63,6 +63,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Force ZXing QR scanner to stay in portrait -->
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="portrait"
+            tools:replace="android:screenOrientation" />
+
         <service
             android:name=".services.UploadAppsService"
             android:permission="android.permission.BIND_JOB_SERVICE" />

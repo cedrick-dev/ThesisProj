@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
 import com.mansourappdevelopment.androidapp.kidsafe.R;
+import com.mansourappdevelopment.androidapp.kidsafe.fragments.AccessibilityPermissionsFragment;
 import com.mansourappdevelopment.androidapp.kidsafe.fragments.LocationPermissionsFragment;
 import com.mansourappdevelopment.androidapp.kidsafe.fragments.PermissionsMainFragment;
 import com.mansourappdevelopment.androidapp.kidsafe.fragments.PhoneCallsPermissionsFragment;
@@ -47,6 +48,9 @@ public class PermissionsActivity extends AppCompatActivity implements OnFragment
 				break;
 			case Constant.PERMISSIONS_SETTINGS_FRAGMENT:
 				selectedFragment = new SettingsPermissionsFragment();
+				break;
+			case Constant.PERMISSIONS_ACCESSIBILITY_FRAGMENT:
+				selectedFragment = new AccessibilityPermissionsFragment();
 				break;
 			case Constant.PERMISSIONS_FRAGMENTS_FINISH:
 				SharedPrefsUtils.setBooleanPreference(this, Constant.CHILD_FIRST_LAUNCH, false);

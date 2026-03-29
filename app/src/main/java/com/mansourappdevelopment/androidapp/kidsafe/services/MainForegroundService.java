@@ -138,13 +138,18 @@ public class MainForegroundService extends Service {
 
 		getUserLocation();
 
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				ArrayList<Contact> contacts = getContacts();
-				uploadContacts(contacts);
-			}
-		}).start();
+		if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
+				== PackageManager.PERMISSION_GRANTED) {
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					ArrayList<Contact> contacts = getContacts();
+					uploadContacts(contacts);
+				}
+			}).start();
+		} else {
+			Log.w(TAG, "READ_CONTACTS permission not granted — skipping contact upload.");
+		}
 
 		/*
 		 * FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
@@ -496,6 +501,11 @@ public class MainForegroundService extends Service {
 	@SuppressLint("Range")
 	public ArrayList<Contact> getContacts() {
 		ArrayList<Contact> contacts = new ArrayList<>();
+		if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
+				!= PackageManager.PERMISSION_GRANTED) {
+			Log.w(TAG, "getContacts: READ_CONTACTS permission not granted.");
+			return contacts;
+		}
 		ContentResolver contentResolver = getApplicationContext().getContentResolver();
 		Cursor cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
 		if (cursor.getCount() > 0) {
