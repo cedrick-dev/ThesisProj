@@ -262,6 +262,9 @@ class ScreenFilterService : Service() {
 
             Log.d(TAG, "✓ MediaProjection active - capturing BELOW overlay layer")
 
+            // Update Firebase to let parent know the filter is actually running
+            setFilterActiveState(true)
+
             // Start the decoupled AI inference loop
             startInferenceLoop()
 
@@ -660,7 +663,23 @@ class ScreenFilterService : Service() {
         }
         blurOverlay = null
 
+        // Update Firebase to let parent know the filter stopped
+        setFilterActiveState(false)
+
         Log.d(TAG, "✓ Service stopped")
+    }
+
+    private fun setFilterActiveState(isActive: Boolean) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val dbRef = FirebaseDatabase.getInstance().getReference("users/childs/$uid/contentFilters/nudityActive")
+        
+        if (isActive) {
+            dbRef.setValue(true)
+            dbRef.onDisconnect().setValue(false)
+        } else {
+            dbRef.setValue(false)
+            dbRef.onDisconnect().cancel()
+        }
     }
 
     override fun onBind(intent: Intent?) = null
