@@ -45,6 +45,9 @@
         <activity android:name=".activities.AboutActivity"/>
         <activity android:name=".activities.SettingsActivity" />
         <activity android:name=".activities.AccountVerificationActivity" />
+        <activity
+            android:name=".activities.ChildCredentialActivity"
+            android:theme="@style/ChildCredentialTheme" />
         <activity android:name=".activities.ModeSelectionActivity" />
         <activity android:name=".activities.PermissionsActivity" />
         <activity android:name=".activities.BlockedAppActivity" />

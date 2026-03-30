@@ -78,7 +78,21 @@ public class LoginActivity extends AppCompatActivity {
 		// Returning user — auto-navigate if still authenticated
 		FirebaseUser user = auth.getCurrentUser();
 		if (user != null) {
-			startChildSignedInActivity();
+			databaseReference.child("childs").child(user.getUid()).addListenerForSingleValueEvent(new com.google.firebase.database.ValueEventListener() {
+				@Override
+				public void onDataChange(@androidx.annotation.NonNull com.google.firebase.database.DataSnapshot snapshot) {
+					if (snapshot.exists() && snapshot.hasChild("parentEmail")) {
+						startChildSignedInActivity();
+					} else {
+						// Node missing (likely deleted by parent), sign out to allow fresh QR setup
+						auth.signOut();
+					}
+				}
+
+				@Override
+				public void onCancelled(@androidx.annotation.NonNull com.google.firebase.database.DatabaseError error) {
+				}
+			});
 		}
 	}
 
@@ -131,9 +145,34 @@ public class LoginActivity extends AppCompatActivity {
 
 		auth.signInWithEmailAndPassword(email, password).addOnCompleteListener(this, task -> {
 			if (task.isSuccessful()) {
-				stopLoadingFragment(loadingDialogFragment);
-				// Device already registered, just sign in
-				startChildSignedInActivity();
+				FirebaseUser user = auth.getCurrentUser();
+				if (user != null) {
+					databaseReference.child("childs").child(user.getUid()).addListenerForSingleValueEvent(new com.google.firebase.database.ValueEventListener() {
+						@Override
+						public void onDataChange(@androidx.annotation.NonNull com.google.firebase.database.DataSnapshot snapshot) {
+							stopLoadingFragment(loadingDialogFragment);
+							if (snapshot.exists() && snapshot.hasChild("parentEmail")) {
+								// Device registered and DB node exists completely
+								startChildSignedInActivity();
+							} else {
+								// DB node missing (likely deleted by parent), force setup again
+								Intent credentialIntent = new Intent(LoginActivity.this, ChildCredentialActivity.class);
+								credentialIntent.putExtra("PARENT_EMAIL", parentEmail);
+								credentialIntent.putExtra("CHILD_EMAIL", email);
+								startActivity(credentialIntent);
+								finish();
+							}
+						}
+
+						@Override
+						public void onCancelled(@androidx.annotation.NonNull com.google.firebase.database.DatabaseError error) {
+							stopLoadingFragment(loadingDialogFragment);
+							Toast.makeText(LoginActivity.this, "Database error: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+						}
+					});
+				} else {
+					stopLoadingFragment(loadingDialogFragment);
+				}
 			} else {
 				// Failed to sign in, assume not registered, attempt creation
 				auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(this, createTask -> {
@@ -141,15 +180,11 @@ public class LoginActivity extends AppCompatActivity {
 					if (createTask.isSuccessful()) {
 						FirebaseUser user = auth.getCurrentUser();
 						if (user != null) {
-							String uid = user.getUid();
-							Child child = new Child("Child Device", email, parentEmail);
-							databaseReference.child("childs").child(uid).setValue(child).addOnCompleteListener(dbTask -> {
-								if (dbTask.isSuccessful()) {
-									startChildSignedInActivity();
-								} else {
-									Toast.makeText(LoginActivity.this, "Failed to register child device in database", Toast.LENGTH_SHORT).show();
-								}
-							});
+							Intent credentialIntent = new Intent(LoginActivity.this, ChildCredentialActivity.class);
+							credentialIntent.putExtra("PARENT_EMAIL", parentEmail);
+							credentialIntent.putExtra("CHILD_EMAIL", email);
+							startActivity(credentialIntent);
+							finish();
 						}
 					} else {
 						Toast.makeText(LoginActivity.this, "Failed to register device: " + createTask.getException().getMessage(), Toast.LENGTH_LONG).show();
