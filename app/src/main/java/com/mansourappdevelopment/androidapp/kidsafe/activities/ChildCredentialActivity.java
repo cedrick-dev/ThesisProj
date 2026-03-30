@@ -21,9 +21,9 @@ import com.mansourappdevelopment.androidapp.kidsafe.R;
 import com.mansourappdevelopment.androidapp.kidsafe.models.Child;
 
 public class ChildCredentialActivity extends AppCompatActivity {
-    
     private TextInputEditText edtParentEmail;
     private TextInputEditText edtChildName;
+    private TextInputEditText edtChildAge;
     private RadioGroup rgGender;
     private Button btnCompleteSetup;
     
@@ -43,6 +43,7 @@ public class ChildCredentialActivity extends AppCompatActivity {
 
         edtParentEmail = findViewById(R.id.edtParentEmail);
         edtChildName = findViewById(R.id.edtChildName);
+        edtChildAge = findViewById(R.id.edtChildAge);
         rgGender = findViewById(R.id.rgGender);
         btnCompleteSetup = findViewById(R.id.btnCompleteSetup);
         
@@ -60,10 +61,17 @@ public class ChildCredentialActivity extends AppCompatActivity {
     
     private void completeSetup() {
         String name = edtChildName.getText().toString().trim();
+        String age = edtChildAge.getText().toString().trim();
         
         if (TextUtils.isEmpty(name)) {
             edtChildName.setError("Name is required");
             edtChildName.requestFocus();
+            return;
+        }
+
+        if (TextUtils.isEmpty(age)) {
+            edtChildAge.setError("Age is required");
+            edtChildAge.requestFocus();
             return;
         }
 
@@ -78,6 +86,7 @@ public class ChildCredentialActivity extends AppCompatActivity {
             String uid = user.getUid();
             Child child = new Child(name, childEmail, parentEmail);
             child.setGender(gender);
+            child.setAge(age);
             
             // Show loading or disable button
             btnCompleteSetup.setEnabled(false);

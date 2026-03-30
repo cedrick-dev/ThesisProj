@@ -14,6 +14,7 @@ public class Child extends User {
 	private ScreenLock screenLock;
 	private String profileImage;
 	private boolean appDeleted;
+	private String age;
 	
 	public Child() {
 	}
@@ -29,6 +30,14 @@ public class Child extends User {
 	
 	public void setParentEmail(String parentEmail) {
 		this.parentEmail = parentEmail;
+	}
+
+	public String getAge() {
+		return age;
+	}
+
+	public void setAge(String age) {
+		this.age = age;
 	}
 
 	public String getGender() {
