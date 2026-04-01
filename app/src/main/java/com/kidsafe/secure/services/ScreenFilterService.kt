@@ -414,10 +414,12 @@ class ScreenFilterService : Service() {
                             // create a copy of the detected frame, maybe resized, so we can upload it safely
                             // without holding lock on the ongoing processing
                             val reportBitmap = Bitmap.createScaledBitmap(bitmap, bitmap.width / 2, bitmap.height / 2, true)
-                            val highestConf = predictions.maxByOrNull { it.confidence }?.confidence ?: 0f
+                            val highestConfPred = predictions.maxByOrNull { it.confidence }
+                            val highestConf = highestConfPred?.confidence ?: 0f
+                            val classId = highestConfPred?.classId ?: 1
                             
                             scope.launch(Dispatchers.IO) {
-                                reportNsfwIncident(reportBitmap, highestConf)
+                                reportNsfwIncident(reportBitmap, highestConf, classId)
                             }
                         }
                     }
@@ -499,7 +501,7 @@ class ScreenFilterService : Service() {
         }
     }
 
-    private suspend fun reportNsfwIncident(bitmap: Bitmap, confidence: Float) {
+    private suspend fun reportNsfwIncident(bitmap: Bitmap, confidence: Float, classId: Int) {
         try {
             val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
             
@@ -558,12 +560,20 @@ class ScreenFilterService : Service() {
             val dbRef = FirebaseDatabase.getInstance().getReference("users/childs/$uid/nsfw_incidents").push()
             val incidentId = dbRef.key ?: UUID.randomUUID().toString()
 
+            val contentType = when(classId) {
+                0 -> "Bikinis / Swimwear"
+                1 -> "Explicit Nudity"
+                2 -> "Underwear"
+                else -> "Inappropriate Content"
+            }
+
             val incidentMap = hashMapOf<String, Any>(
                 "timestamp" to System.currentTimeMillis(),
                 "appName" to appName,
                 "appPackage" to appPackage,
                 "imageUrl" to dataUri, // Directly store base64 in the database
                 "confidence" to confidence,
+                "contentType" to contentType,
                 "deviceModel" to Build.MODEL,
                 "actionTaken" to "Blocked"
             )
