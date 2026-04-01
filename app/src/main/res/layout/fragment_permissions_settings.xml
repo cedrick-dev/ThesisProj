@@ -32,22 +32,7 @@
         android:layout_gravity="bottom"
         android:orientation="vertical">
 
-        <FrameLayout
-            android:id="@+id/layoutFirstPermission"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="@dimen/padding_8dp">
 
-            <TextView
-                style="@style/TextViewPermissions"
-                android:text="@string/write_settings_permission" />
-
-            <Switch
-                android:id="@+id/switchWriteSettingsPermission"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end|center" />
-        </FrameLayout>
 
         <FrameLayout
             android:id="@+id/layoutSecondPermission"
@@ -115,6 +100,7 @@
                 android:layout_gravity="center_horizontal|center_vertical"
                 android:orientation="horizontal">
 
+                <!-- Step 3 of 4: selected -->
                 <ImageView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -122,21 +108,6 @@
                     android:src="@drawable/ic_dot" />
 
                 <ImageView
-                    android:id="@+id/imgSecondDot"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_dot" />
-
-                <ImageView
-                    android:id="@+id/imgThirdDot"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_dot" />
-
-                <ImageView
-                    android:id="@+id/imgFourthDot"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
@@ -147,6 +118,12 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:src="@drawable/ic_dot_selected" />
+
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_dot" />
             </LinearLayout>
 
             <Button

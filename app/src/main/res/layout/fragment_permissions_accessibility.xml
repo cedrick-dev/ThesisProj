@@ -62,7 +62,7 @@
                 style="@style/ButtonPermissionsPrev"
                 android:text="@string/back" />
 
-            <!-- Step indicator dots (6th/final screen) -->
+            <!-- Step indicator dots (4th/final screen) -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -87,19 +87,7 @@
                     android:layout_gravity="center"
                     android:src="@drawable/ic_dot" />
 
-                <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_dot" />
-
-                <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_dot" />
-
-                <!-- 6th dot selected -->
+                <!-- Step 4 of 4: selected -->
                 <ImageView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

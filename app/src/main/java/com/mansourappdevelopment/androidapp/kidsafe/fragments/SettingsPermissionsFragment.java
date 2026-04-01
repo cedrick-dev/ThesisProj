@@ -16,8 +16,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CompoundButton;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.Switch;
 
 import androidx.annotation.NonNull;
@@ -33,7 +31,6 @@ import com.mansourappdevelopment.androidapp.kidsafe.interfaces.OnFragmentChangeL
 import com.mansourappdevelopment.androidapp.kidsafe.utils.Constant;
 
 public class SettingsPermissionsFragment extends Fragment implements CompoundButton.OnCheckedChangeListener {
-	private Switch switchWriteSettingsPermission;
 	private Switch switchOverlayPermission;
 	private Switch switchPackageUsagePermission;
 	private Switch switchDeviceAdminPermission;
@@ -60,22 +57,8 @@ public class SettingsPermissionsFragment extends Fragment implements CompoundBut
 		fragmentManager = getFragmentManager();
 		onFragmentChangeListener = (OnFragmentChangeListener) activity;
 		
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-			ImageView imgSecondDot = view.findViewById(R.id.imgSecondDot);
-			imgSecondDot.setVisibility(View.GONE);
-			ImageView imgThirdDot = view.findViewById(R.id.imgThirdDot);
-			imgThirdDot.setVisibility(View.GONE);
-			ImageView imgFourthDot = view.findViewById(R.id.imgFourthDot);
-			imgFourthDot.setVisibility(View.GONE);
-			FrameLayout layoutFirstPermission = view.findViewById(R.id.layoutFirstPermission);
-			layoutFirstPermission.setVisibility(View.GONE);
-			FrameLayout layoutSecondPermission = view.findViewById(R.id.layoutSecondPermission);
-			layoutSecondPermission.setVisibility(View.GONE);
-			if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
-				FrameLayout layoutThirdPermission = view.findViewById(R.id.layoutThirdPermission);
-				layoutThirdPermission.setVisibility(View.GONE);
-			}
-		}
+
+
 		
 		btnPermissionsSettingsNext = view.findViewById(R.id.btnPermissionsSettingsNext);
 		btnPermissionsSettingsNext.setOnClickListener(new View.OnClickListener() {
@@ -101,9 +84,6 @@ public class SettingsPermissionsFragment extends Fragment implements CompoundBut
 		});
 		
 		
-		switchWriteSettingsPermission = view.findViewById(R.id.switchWriteSettingsPermission);
-		switchWriteSettingsPermission.setChecked(isWriteSettingsPermissionGranted());
-		switchWriteSettingsPermission.setOnCheckedChangeListener(this);
 		switchOverlayPermission = view.findViewById(R.id.switchOverlayPermission);
 		switchOverlayPermission.setChecked(isOverlayPermissionGranted());
 		switchOverlayPermission.setOnCheckedChangeListener(this);
@@ -121,17 +101,10 @@ public class SettingsPermissionsFragment extends Fragment implements CompoundBut
 	}
 	
 	private boolean checkAllPermissions() {
-		return isDeviceAdmin() && isWriteSettingsPermissionGranted() && isOverlayPermissionGranted();//TODO::PackageUsage
+		return isDeviceAdmin() && isOverlayPermissionGranted();
 	}
 	
-	private boolean isWriteSettingsPermissionGranted() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-			return Settings.System.canWrite(context);
-		} else {
-			return true;//TODO::check below M
-		}
-	}
-	
+
 	private boolean isOverlayPermissionGranted() {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			return Settings.canDrawOverlays(context);
@@ -159,9 +132,7 @@ public class SettingsPermissionsFragment extends Fragment implements CompoundBut
 	public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
 		if (isChecked) {
 			int id = buttonView.getId();
-			if (id == R.id.switchWriteSettingsPermission) {
-				requestWriteSettingsPermission();
-			} else if (id == R.id.switchOverlayPermission) {
+			if (id == R.id.switchOverlayPermission) {
 				requestOverlayPermission();
 			} else if (id == R.id.switchPackageUsagePermission) {
 				requestPackageUsagePermission();
@@ -172,19 +143,7 @@ public class SettingsPermissionsFragment extends Fragment implements CompoundBut
 		
 	}
 	
-	private void requestWriteSettingsPermission() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-			if (!Settings.System.canWrite(context)) {
-				Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
-				//startActivityForResult(intent, Constant.WRITE_SETTINGS_PERMISSION_REQUEST_CODE);
-				startActivity(intent);
-			} else {
-				switchWriteSettingsPermission.setChecked(true);
-				// switchWriteSettingsPermission.setEnabled(false);
-			}
-		}
-	}
-	
+
 	private void requestOverlayPermission() {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			if (!Settings.canDrawOverlays(context)) {

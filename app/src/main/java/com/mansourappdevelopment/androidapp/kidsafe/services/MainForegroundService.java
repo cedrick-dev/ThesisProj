@@ -15,9 +15,6 @@ import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -69,8 +66,6 @@ public class MainForegroundService extends Service {
 	public static final int NOTIFICATION_ID = 27;
 	public static final String TAG = "MainServiceTAG";
 	public static final String BLOCKED_APP_NAME_EXTRA = "com.mansourappdevelopment.androidapp.kidsafe.services.BLOCKED_APP_NAME_EXTRA";
-	public static final int LOCATION_UPDATE_INTERVAL = 1; // every 5 seconds
-	public static final int LOCATION_UPDATE_DISPLACEMENT = 5; // every 10 meters
 	private ExecutorService executorService;
 	private ArrayList<App> apps;
 	private PhoneStateReceiver phoneStateReceiver;
@@ -139,7 +134,6 @@ public class MainForegroundService extends Service {
 
 		startForeground(NOTIFICATION_ID, notification);
 
-		getUserLocation();
 
 		if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
 				== PackageManager.PERMISSION_GRANTED) {
@@ -174,20 +168,6 @@ public class MainForegroundService extends Service {
 			}
 		});
 
-		Query locationQuery = databaseReference.child("childs").child(uid).child("location");
-		locationQuery.addValueEventListener(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if (dataSnapshot.exists()) {
-					setFence(dataSnapshot);
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-
-			}
-		});
 
 		/*
 		 * Query webFilterQuery =
@@ -415,138 +395,11 @@ public class MainForegroundService extends Service {
 			}
 		});
 	}
-
-	private void getUserLocation() {
-		Log.i(TAG, "getUserLocation: executed");
-		LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-
-		LocationListener locationListener = new LocationListener() {
-			@Override
-			public void onLocationChanged(Location location) {
-				if (location != null) {
-					Log.i(TAG, "onLocationChanged: latitude: " + location.getLatitude());
-					Log.i(TAG, "onLocationChanged: longitude: " + location.getLongitude());
-					addUserLocationToDatabase(location, uid);
-				} else {
-					Log.i(TAG, "onLocationChanged: location is null");
-				}
-			}
-
-			@Override
-			public void onStatusChanged(String provider, int status, Bundle extras) {
-
-			}
-
-			@Override
-			public void onProviderEnabled(String provider) {
-
-			}
-
-			@Override
-			public void onProviderDisabled(String provider) {
-
-			}
-		};
-
-		// these two statements will be only executed when the permission is granted.
-		if (ActivityCompat.checkSelfPermission(this,
-				Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-				&& ActivityCompat.checkSelfPermission(this,
-						Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-
-			locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_UPDATE_INTERVAL,
-					LOCATION_UPDATE_DISPLACEMENT, locationListener);
-			locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, LOCATION_UPDATE_INTERVAL,
-					LOCATION_UPDATE_DISPLACEMENT, locationListener);
-			return;
-		}
-
-	}
-
-	private void addUserLocationToDatabase(Location location, String uid) {
-		double latitude = location.getLatitude();
-		double longitude = location.getLongitude();
-		HashMap<String, Object> update = new HashMap<>();
-		update.put("latitude", latitude);
-		update.put("longitude", longitude);
-		databaseReference.child("childs").child(uid).child("location").updateChildren(update);
-	}
-
 	private void uploadContacts(ArrayList<Contact> contacts) {
 		databaseReference.child("childs").child(uid).child("contacts").setValue(contacts);
-
 	}
 
-	private void setFence(DataSnapshot dataSnapshot) {
-		final com.mansourappdevelopment.androidapp.kidsafe.models.Location childLocation = dataSnapshot
-				.getValue(com.mansourappdevelopment.androidapp.kidsafe.models.Location.class);
-		Log.i(TAG, "setFence: getLatitude " + childLocation.getLatitude());
-		Log.i(TAG, "setFence: getLongitude " + childLocation.getLongitude());
-		Log.i(TAG, "setFence: isGeoFence " + childLocation.isGeoFence());
-		Log.i(TAG, "setFence: isOutOfFence " + childLocation.isOutOfFence());
-		Log.i(TAG, "setFence: getFenceCenterLatitude " + childLocation.getFenceCenterLatitude());
-		Log.i(TAG, "setFence: getFenceCenterLongitude " + childLocation.getFenceCenterLongitude());
-		Log.i(TAG, "setFence: getFenceDiameter " + childLocation.getFenceDiameter());
 
-		if (childLocation.isGeoFence()) {
-			Log.i(TAG, "setFence: true");
-			LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-			LocationListener locationListener = new LocationListener() {
-				@Override
-				public void onLocationChanged(Location location) {
-					Log.i(TAG, "setFence: changed");
-					if (location != null) {
-						float[] distanceInMeters = new float[1];
-						Location.distanceBetween(childLocation.getFenceCenterLatitude(),
-								childLocation.getFenceCenterLongitude(), location.getLatitude(),
-								location.getLongitude(), distanceInMeters);
-
-						boolean outOfFence = distanceInMeters[0] > childLocation.getFenceDiameter();
-						if (outOfFence) {
-							Log.i(TAG, "setFence: OUT OF FENCE");
-							databaseReference.child("childs").child(uid).child("location").child("outOfFence")
-									.setValue(true);
-						} else {
-							databaseReference.child("childs").child(uid).child("location").child("outOfFence")
-									.setValue(false);
-						}
-					} else {
-						Log.i(TAG, "setFence: location is null");
-					}
-				}
-
-				@Override
-				public void onStatusChanged(String provider, int status, Bundle extras) {
-
-				}
-
-				@Override
-				public void onProviderEnabled(String provider) {
-
-				}
-
-				@Override
-				public void onProviderDisabled(String provider) {
-
-				}
-			};
-
-			// these two statements will be only executed when the permission is granted.
-			if (ActivityCompat.checkSelfPermission(this,
-					Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-					&& ActivityCompat.checkSelfPermission(this,
-							Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-
-				locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_UPDATE_INTERVAL,
-						LOCATION_UPDATE_DISPLACEMENT, locationListener);
-				locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, LOCATION_UPDATE_INTERVAL,
-						LOCATION_UPDATE_DISPLACEMENT, locationListener);
-				return;
-			}
-
-		}
-
-	}
 
 	/*
 	 * private void changeDNS(String primaryDNS, String secondaryDNS) {

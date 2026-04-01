@@ -9,10 +9,8 @@ import androidx.fragment.app.Fragment;
 
 import com.mansourappdevelopment.androidapp.kidsafe.R;
 import com.mansourappdevelopment.androidapp.kidsafe.fragments.AccessibilityPermissionsFragment;
-import com.mansourappdevelopment.androidapp.kidsafe.fragments.LocationPermissionsFragment;
+
 import com.mansourappdevelopment.androidapp.kidsafe.fragments.PermissionsMainFragment;
-import com.mansourappdevelopment.androidapp.kidsafe.fragments.PhoneCallsPermissionsFragment;
-import com.mansourappdevelopment.androidapp.kidsafe.fragments.SMSPermissionsFragment;
 import com.mansourappdevelopment.androidapp.kidsafe.fragments.SettingsPermissionsFragment;
 import com.mansourappdevelopment.androidapp.kidsafe.interfaces.OnFragmentChangeListener;
 import com.mansourappdevelopment.androidapp.kidsafe.utils.Constant;
@@ -37,15 +35,7 @@ public class PermissionsActivity extends AppCompatActivity implements OnFragment
 			case Constant.PERMISSIONS_MAIN_FRAGMENT:
 				selectedFragment = new PermissionsMainFragment();
 				break;
-			case Constant.PERMISSIONS_SMS_FRAGMENT:
-				selectedFragment = new SMSPermissionsFragment();
-				break;
-			case Constant.PERMISSIONS_PHONE_CALLS_FRAGMENT:
-				selectedFragment = new PhoneCallsPermissionsFragment();
-				break;
-			case Constant.PERMISSIONS_LOCATION_FRAGMENT:
-				selectedFragment = new LocationPermissionsFragment();
-				break;
+
 			case Constant.PERMISSIONS_SETTINGS_FRAGMENT:
 				selectedFragment = new SettingsPermissionsFragment();
 				break;

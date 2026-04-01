@@ -101,7 +101,7 @@ public class LocationPermissionsFragment extends Fragment implements OnPermissio
 		btnPermissionsLocationPrev.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				onFragmentChangeListener.onFragmentChange(Constant.PERMISSIONS_PHONE_CALLS_FRAGMENT);
+				onFragmentChangeListener.onFragmentChange(Constant.PERMISSIONS_MAIN_FRAGMENT);
 			}
 		});
 		

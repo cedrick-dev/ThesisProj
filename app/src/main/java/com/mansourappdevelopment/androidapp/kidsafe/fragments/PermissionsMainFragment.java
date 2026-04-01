@@ -1,12 +1,10 @@
 package com.mansourappdevelopment.androidapp.kidsafe.fragments;
 
-import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -32,22 +30,13 @@ public class PermissionsMainFragment extends Fragment {
 		super.onViewCreated(view, savedInstanceState);
 		onFragmentChangeListener = (OnFragmentChangeListener) getActivity();
 		
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-			ImageView imgSecondDot = view.findViewById(R.id.imgSecondDot);
-			imgSecondDot.setVisibility(View.GONE);
-			ImageView imgThirdDot = view.findViewById(R.id.imgThirdDot);
-			imgThirdDot.setVisibility(View.GONE);
-			ImageView imgFourthDot = view.findViewById(R.id.imgFourthDot);
-			imgFourthDot.setVisibility(View.GONE);
-		}
+
 		
 		btnPermissionsMainNext = view.findViewById(R.id.btnPermissionsMainNext);
 		btnPermissionsMainNext.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M)
-					onFragmentChangeListener.onFragmentChange(Constant.PERMISSIONS_SETTINGS_FRAGMENT);
-				else onFragmentChangeListener.onFragmentChange(Constant.PERMISSIONS_SMS_FRAGMENT);
+				onFragmentChangeListener.onFragmentChange(Constant.PERMISSIONS_SETTINGS_FRAGMENT);
 				
 			}
 		});

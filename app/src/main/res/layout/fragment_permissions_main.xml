@@ -43,6 +43,7 @@
             android:layout_gravity="center_horizontal|center_vertical"
             android:orientation="horizontal">
 
+            <!-- Step 1 of 4: selected -->
             <ImageView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -50,21 +51,12 @@
                 android:src="@drawable/ic_dot_selected" />
 
             <ImageView
-                android:id="@+id/imgSecondDot"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_dot" />
 
             <ImageView
-                android:id="@+id/imgThirdDot"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:src="@drawable/ic_dot" />
-
-            <ImageView
-                android:id="@+id/imgFourthDot"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
