@@ -26,6 +26,9 @@ import kotlinx.coroutines.tasks.await
 import java.util.concurrent.atomic.AtomicBoolean
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ChildEventListener
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.storage.FirebaseStorage
 import java.io.ByteArrayOutputStream
 import java.util.UUID
@@ -101,6 +104,12 @@ class ScreenFilterService : Service() {
     private var lastIncidentReportTime = 0L
     private val INCIDENT_THROTTLE_MS = 10000L // 10 seconds per incident report
 
+    // Listener reference so we can remove it on destroy
+    private var appUnblockListener: ChildEventListener? = null
+
+    // Tracks each app's PREVIOUS blocked state so we can detect true→false transitions only
+    private val previousBlockedStates = mutableMapOf<String, Boolean>()
+
     private var processingThread: HandlerThread? = null
 
     override fun onCreate() {
@@ -144,6 +153,68 @@ class ScreenFilterService : Service() {
         }
 
         setupOverlay()
+        listenForParentUnblocks()
+    }
+
+    /**
+     * Watches the child's app list in Firebase.
+     * When the parent manually sets `blocked = false` on any app,
+     * this resets the local NSFW incident counter for that package back to 0
+     * so a fresh 3-strike window begins.
+     */
+    private fun listenForParentUnblocks() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val appsRef = FirebaseDatabase.getInstance().getReference("users/childs/$uid/apps")
+
+        val listener = object : ChildEventListener {
+
+            // Record the initial blocked state for every app on first load
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val pkg = snapshot.child("packageName").getValue(String::class.java) ?: return
+                val blocked = snapshot.child("blocked").getValue(Boolean::class.java) ?: false
+                previousBlockedStates[pkg] = blocked
+                Log.d(TAG, "📋 Tracking initial blocked state for '$pkg': $blocked")
+            }
+
+            // Only reset the counter when blocked SPECIFICALLY transitions true → false
+            // (i.e. the parent deliberately turned the block OFF).
+            // We must NOT reset when other fields (appName, icon, etc.) change
+            // while the app happens to already be unblocked — that was the old bug.
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                val pkg = snapshot.child("packageName").getValue(String::class.java) ?: return
+                val nowBlocked = snapshot.child("blocked").getValue(Boolean::class.java) ?: false
+                val wasBlocked = previousBlockedStates[pkg] ?: false
+
+                // Always keep our local state map up-to-date
+                previousBlockedStates[pkg] = nowBlocked
+
+                // Only act on a true → false transition
+                if (wasBlocked && !nowBlocked) {
+                    val prefs = getSharedPreferences("NsfwIncidentPrefs", Context.MODE_PRIVATE)
+                    val countKey = "nsfw_count_$pkg"
+                    val previous = prefs.getInt(countKey, 0)
+                    if (previous > 0) {
+                        prefs.edit().putInt(countKey, 0).apply()
+                        Log.i(TAG, "🔓 Parent unblocked '$pkg' — NSFW counter reset from $previous → 0")
+                    }
+                }
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                // Clean up tracking map when an app is removed
+                val pkg = snapshot.child("packageName").getValue(String::class.java) ?: return
+                previousBlockedStates.remove(pkg)
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "App unblock listener cancelled: ${error.message}")
+            }
+        }
+
+        appsRef.addChildEventListener(listener)
+        appUnblockListener = listener
+        Log.d(TAG, "✓ Parent-unblock listener attached")
     }
 
     private fun setupOverlay() {
@@ -580,6 +651,19 @@ class ScreenFilterService : Service() {
 
             dbRef.setValue(incidentMap).addOnSuccessListener {
                 Log.d(TAG, "Successfully created NSFW incident record in DB with Base64 Image!")
+                
+                if (appPackage != "unknown") {
+                    val prefs = getSharedPreferences("NsfwIncidentPrefs", Context.MODE_PRIVATE)
+                    val countKey = "nsfw_count_$appPackage"
+                    var currentCount = prefs.getInt(countKey, 0)
+                    currentCount++
+                    prefs.edit().putInt(countKey, currentCount).apply()
+                    
+                    Log.d(TAG, "NSFW incident count for $appPackage is now $currentCount")
+                    if (currentCount >= 3) {
+                        blockAppAutomatically(uid, appPackage)
+                    }
+                }
             }.addOnFailureListener { e ->
                 Log.e(TAG, "Failed to save NSFW incident to DB", e)
             }
@@ -587,6 +671,37 @@ class ScreenFilterService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to report NSFW incident", e)
         }
+    }
+
+    private fun blockAppAutomatically(uid: String, appPackage: String) {
+        val appsRef = FirebaseDatabase.getInstance().getReference("users/childs/$uid/apps")
+        appsRef.addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                if (snapshot.exists()) {
+                    var blocked = false
+                    for (appSnapshot in snapshot.children) {
+                        try {
+                            val pName = appSnapshot.child("packageName").getValue(String::class.java)
+                            if (pName == appPackage) {
+                                appSnapshot.ref.child("blocked").setValue(true)
+                                Log.i(TAG, "✅ Automatically blocked app: $appPackage due to exceeding NSFW threshold.")
+                                blocked = true
+                                break
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error checking app package names", e)
+                        }
+                    }
+                    if (!blocked) {
+                        Log.w(TAG, "Could not find $appPackage in Firebase apps list to auto-block it.")
+                    }
+                }
+            }
+
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                Log.e(TAG, "Failed to fetch apps for auto-blocking", error.toException())
+            }
+        })
     }
 
     private fun startForegroundNotification() {
@@ -624,6 +739,15 @@ class ScreenFilterService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "Service stopping...")
+
+        // Remove the parent-unblock Firebase listener
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid != null && appUnblockListener != null) {
+            FirebaseDatabase.getInstance()
+                .getReference("users/childs/$uid/apps")
+                .removeEventListener(appUnblockListener!!)
+            appUnblockListener = null
+        }
 
         isRunning = false
 
