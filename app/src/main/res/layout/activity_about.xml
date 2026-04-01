@@ -171,8 +171,15 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/margin_32dp"
-                    android:layout_marginBottom="@dimen/margin_24dp"
                     android:text="@string/critic_name"
+                    android:textSize="@dimen/text_size_16sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_32dp"
+                    android:layout_marginBottom="@dimen/margin_24dp"
+                    android:text="@string/critic_name2"
                     android:textSize="@dimen/text_size_16sp" />
             </LinearLayout>
 
