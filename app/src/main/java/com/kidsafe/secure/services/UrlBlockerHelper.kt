@@ -11,6 +11,9 @@ object UrlBlockerHelper {
         "pornhub", "xvideos", "redtube", "youporn", "xnxx", "xhamster", "spankbang", "eporner",
         "chaturbate", "onlyfans", "brazzers", "naughtyamerica", "playboy", "bangbros", "realitykings",
         
+        // Localized Philippine Adult Brands
+        "pinayflix", "sarapbabe", "asianpinay", "javhdporn", "kantot", "tikjak",
+        
         // Universal Explicit Keywords (Will block any URL containing these)
         "porn", "sex", "xxx", "nude", "nsfw", "camgirl", "stripchat", "bonga",
         "rule34", "hentai", "jav", "milf", "bdsm", "fetish", "voyeur", "escort",
