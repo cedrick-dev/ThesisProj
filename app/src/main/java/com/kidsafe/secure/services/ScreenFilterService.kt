@@ -622,7 +622,7 @@ class ScreenFilterService : Service() {
                 "imageUrl" to dataUri, // Directly store base64 in the database
                 "confidence" to confidence,
                 "contentType" to contentType,
-                "deviceModel" to Build.MODEL,
+                "deviceModel" to "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
                 "actionTaken" to "Blocked"
             )
 
