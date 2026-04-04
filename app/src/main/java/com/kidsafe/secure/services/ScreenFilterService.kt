@@ -104,6 +104,9 @@ class ScreenFilterService : Service() {
     private var lastIncidentReportTime = 0L
     private val INCIDENT_THROTTLE_MS = 10000L // 10 seconds per incident report
 
+    private var lastStrikeTime = 0L
+    private val STRIKE_THROTTLE_MS = 2000L // 2 seconds per strike count (rapid test fix)
+
     // Listener reference so we can remove it on destroy
     private var appUnblockListener: ChildEventListener? = null
 
@@ -477,13 +480,16 @@ class ScreenFilterService : Service() {
                     // Step 2 & 3: Automatically trigger back button to exit user from the bad frame
                     NsfwActionManager.performGoBack()
 
-                    // Try to report incident to parent app
+                    // Handle Strike Counter (Immediate / 2s throttle)
+                    val currentAppPackage = getForegroundPackageName()
+                    incrementStrikeCounter(currentAppPackage)
+
+                    // Handle Incident Report (Uploads / 10s throttle)
                     if (bitmap != null) {
                         val currentTime = System.currentTimeMillis()
                         if (currentTime - lastIncidentReportTime > INCIDENT_THROTTLE_MS) {
                             lastIncidentReportTime = currentTime
-                            // create a copy of the detected frame, maybe resized, so we can upload it safely
-                            // without holding lock on the ongoing processing
+                            
                             val reportBitmap = Bitmap.createScaledBitmap(bitmap, bitmap.width / 2, bitmap.height / 2, true)
                             val highestConfPred = predictions.maxByOrNull { it.confidence }
                             val highestConf = highestConfPred?.confidence ?: 0f
@@ -577,38 +583,9 @@ class ScreenFilterService : Service() {
             val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
             
             // Get foreground app name
-            var appPackage = "unknown"
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
-                val time = System.currentTimeMillis()
-                // Use queryEvents for exact foreground accuracy instead of aggregated stats
-                val usageEvents = usageStatsManager.queryEvents(time - 1000 * 60, time)
-                val event = android.app.usage.UsageEvents.Event()
-                var latestTime = 0L
-                
-                while (usageEvents.hasNextEvent()) {
-                    usageEvents.getNextEvent(event)
-                    if (event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND || 
-                        event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
-                        if (event.timeStamp > latestTime) {
-                            latestTime = event.timeStamp
-                            appPackage = event.packageName
-                        }
-                    }
-                }
-            }
-
+            val appPackage = getForegroundPackageName()
             var appName = appPackage
             try {
-                // If UsageStats failed to find it recently, try AccessibilityService (instant)
-                if (appPackage == "unknown" && NsfwActionManager.accessibilityService != null) {
-                    val activePackage = NsfwActionManager.accessibilityService?.rootInActiveWindow?.packageName?.toString()
-                    if (!activePackage.isNullOrEmpty()) {
-                        appPackage = activePackage
-                        appName = activePackage
-                    }
-                }
-
                 val pm = packageManager
                 val ai = pm.getApplicationInfo(appPackage, 0)
                 appName = pm.getApplicationLabel(ai).toString()
@@ -651,25 +628,73 @@ class ScreenFilterService : Service() {
 
             dbRef.setValue(incidentMap).addOnSuccessListener {
                 Log.d(TAG, "Successfully created NSFW incident record in DB with Base64 Image!")
-                
-                if (appPackage != "unknown") {
-                    val prefs = getSharedPreferences("NsfwIncidentPrefs", Context.MODE_PRIVATE)
-                    val countKey = "nsfw_count_$appPackage"
-                    var currentCount = prefs.getInt(countKey, 0)
-                    currentCount++
-                    prefs.edit().putInt(countKey, currentCount).apply()
-                    
-                    Log.d(TAG, "NSFW incident count for $appPackage is now $currentCount")
-                    if (currentCount >= 3) {
-                        blockAppAutomatically(uid, appPackage)
-                    }
-                }
             }.addOnFailureListener { e ->
                 Log.e(TAG, "Failed to save NSFW incident to DB", e)
             }
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to report NSFW incident", e)
+        }
+    }
+
+    private fun getForegroundPackageName(): String {
+        var appPackage = "unknown"
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
+                val time = System.currentTimeMillis()
+                val usageEvents = usageStatsManager.queryEvents(time - 1000 * 60, time)
+                val event = android.app.usage.UsageEvents.Event()
+                var latestTime = 0L
+                
+                while (usageEvents.hasNextEvent()) {
+                    usageEvents.getNextEvent(event)
+                    if (event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND || 
+                        event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
+                        if (event.timeStamp > latestTime) {
+                            latestTime = event.timeStamp
+                            appPackage = event.packageName
+                        }
+                    }
+                }
+            }
+
+            // Fallback to accessibility if usage stats failed or if it's "unknown"
+            if (appPackage == "unknown" && NsfwActionManager.accessibilityService != null) {
+                val activePackage = NsfwActionManager.accessibilityService?.rootInActiveWindow?.packageName?.toString()
+                if (!activePackage.isNullOrEmpty()) {
+                    appPackage = activePackage
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error detecting foreground package", e)
+        }
+        return appPackage
+    }
+
+    private fun incrementStrikeCounter(appPackage: String) {
+        if (appPackage == "unknown" || appPackage == packageName) return // Don't block ourselves
+
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val currentTime = System.currentTimeMillis()
+        
+        if (currentTime - lastStrikeTime > STRIKE_THROTTLE_MS) {
+            lastStrikeTime = currentTime
+            
+            val prefs = getSharedPreferences("NsfwIncidentPrefs", Context.MODE_PRIVATE)
+            val countKey = "nsfw_count_$appPackage"
+            var currentCount = prefs.getInt(countKey, 0)
+            currentCount++
+            prefs.edit().putInt(countKey, currentCount).apply()
+            
+            Log.w(TAG, "🔥 STRIKE! NSFW incident count for $appPackage is now $currentCount/3")
+            
+            if (currentCount >= 3) {
+                Log.e(TAG, "🚫 THRESHOLD REACHED! Blocking $appPackage automatically.")
+                blockAppAutomatically(uid, appPackage)
+            }
+        } else {
+            Log.v(TAG, "Strike throttled for $appPackage")
         }
     }
 
