@@ -239,10 +239,10 @@ class RoboflowContentDetector(private val context: Context) {
             var classId = 0
             for (c in 0 until numClasses) {
                 // GENDER FILTERING RULE:
-                // class 0 (bikinis)
+                // class 0 (bikinis / swimwear)
                 // class 1 (nudity)
                 // class 2 (mens underwear)
-                // boy (male): flag class 0 (bikinis), class 1 (nudity)
+                // boy (male):  flag class 0 (bikinis), class 1 (nudity)
                 // girl (female): flag class 2 (mens underwear), class 1 (nudity)
                 val isBlockedClass = if (isBoy) {
                     c == 0 || c == 1
@@ -252,12 +252,28 @@ class RoboflowContentDetector(private val context: Context) {
                     if (logDetails && c == 0) {
                         Log.e(TAG, "GENDER UNRECOGNIZED: '$childGender'. Falling back to NUDITY-ONLY blocking.")
                     }
-                    c == 2 // Fallback: only block nudity if gender is missing
+                    c == 1 // FIX: Fallback should block nudity (class 1), NOT class 2 (mens underwear)
                 }
 
                 if (!isBlockedClass) continue
 
                 val score = output[4 + c][i]
+
+                // BIKINI OVERRIDE FOR GIRLS:
+                // The model can misclassify female bikinis/swimwear (class 0) as men's underwear (class 2).
+                // If we are about to flag class 2 for a girl, check if the bikini score (class 0)
+                // is equal or higher — if so, it is almost certainly a swimsuit, not underwear.
+                // In that case, skip this anchor entirely so it is never flagged.
+                if (isGirl && c == 2 && numClasses > 0) {
+                    val bikiniScore = output[4 + 0][i] // class 0 = bikini / swimwear
+                    if (bikiniScore >= score) {
+                        if (logDetails) {
+                            Log.d(TAG, "BIKINI OVERRIDE: anchor $i — bikini score (${ "%.3f".format(bikiniScore)}) >= underwear score (${ "%.3f".format(score)}). Treating as swimwear for girl — skipping.")
+                        }
+                        continue // do NOT flag this anchor for this girl
+                    }
+                }
+
                 if (score > confidence) {
                     confidence = score
                     classId = c
