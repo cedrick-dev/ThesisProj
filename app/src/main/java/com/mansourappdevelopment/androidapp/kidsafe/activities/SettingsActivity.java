@@ -35,7 +35,7 @@ public class SettingsActivity extends AppCompatActivity implements OnLanguageSel
 	private Button btnDeleteAccount;
 	private Button btnAbout;
 	//private Button btnRateUs;   //Won't be uploaded to the play store duo to violation of privacy
-	private Button btnSendFeedBack;
+
 	private Button btnVisitWebsite;
 	private ImageButton btnBack;
 	private ImageButton btnSettings;
@@ -116,14 +116,6 @@ public class SettingsActivity extends AppCompatActivity implements OnLanguageSel
 		});*/
 		
 		
-		btnSendFeedBack = findViewById(R.id.btnSendFeedBack);
-		btnSendFeedBack.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View view) {
-				SendFeedBack();
-			}
-		});
-		
 		
 		btnVisitWebsite = findViewById(R.id.btnVisitWebsite);
 		btnVisitWebsite.setOnClickListener(new View.OnClickListener() {
@@ -144,21 +136,7 @@ public class SettingsActivity extends AppCompatActivity implements OnLanguageSel
 		
 	}*/
 	
-	private void SendFeedBack() {
-		String body = null;
-		try {
-			body = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-			body = "\n\n-----------------------------\nPlease don't remove this information\n Device OS: Android \n Device OS version: " + Build.VERSION.RELEASE + "\n App Version: " + body + "\n Device Brand: " + Build.BRAND + "\n Device Model: " + Build.MODEL + "\n Device Manufacturer: " + Build.MANUFACTURER;
-		} catch (PackageManager.NameNotFoundException e) {
-			e.printStackTrace();
-		}
-		Intent intent = new Intent(Intent.ACTION_SEND);
-		intent.setType("message/rfc822");
-		intent.putExtra(Intent.EXTRA_EMAIL, new String[]{"MansourAppDevelopment@gmail.com"});
-		intent.putExtra(Intent.EXTRA_SUBJECT, "AegistNet Feedback");
-		intent.putExtra(Intent.EXTRA_TEXT, body);
-		startActivity(Intent.createChooser(intent, getString(R.string.choose_email_client)));
-	}
+
 	
 	private void visitWebsite() {
 		Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://final-thesis-repo-n6pf.vercel.app/"));

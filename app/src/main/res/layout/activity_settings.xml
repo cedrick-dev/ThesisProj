@@ -122,17 +122,7 @@
 
                 <include layout="@layout/horizontal_line" />
 
-                <Button
-                    android:id="@+id/btnSendFeedBack"
-                    style="@style/ButtonSettings"
-                    android:text="@string/send_feedback"
-                    android:drawableStart="@drawable/ic_mail"
-                    android:drawablePadding="@dimen/padding_12dp"
-                    android:drawableTint="@color/text_secondary"
-                    android:paddingTop="@dimen/padding_12dp"
-                    android:paddingBottom="@dimen/padding_12dp" />
 
-                <include layout="@layout/horizontal_line" />
 
                 <Button
                     android:id="@+id/btnVisitWebsite"
