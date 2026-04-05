@@ -18,7 +18,7 @@ public class App implements Parcelable {
 	};
 	private String appName;
 	private String packageName;
-	//private Drawable appIcon;
+	private String appIconBase64;
 	private boolean blocked;
 	private ScreenLock screenLock;
 	
@@ -38,10 +38,18 @@ public class App implements Parcelable {
 		this.packageName = packageName;
 		this.blocked = blocked;
 	}
+
+	public App(String appName, String packageName, String appIconBase64, boolean blocked) {
+		this.appName = appName;
+		this.packageName = packageName;
+		this.appIconBase64 = appIconBase64;
+		this.blocked = blocked;
+	}
 	
 	protected App(Parcel in) {
 		appName = in.readString();
 		packageName = in.readString();
+		appIconBase64 = in.readString();
 		blocked = in.readByte() != 0;
 	}
 	
@@ -76,6 +84,14 @@ public class App implements Parcelable {
 	public void setScreenLock(ScreenLock screenLock) {
 		this.screenLock = screenLock;
 	}
+
+	public String getAppIconBase64() {
+		return appIconBase64;
+	}
+
+	public void setAppIconBase64(String appIconBase64) {
+		this.appIconBase64 = appIconBase64;
+	}
 	
 	
 	@Override
@@ -87,6 +103,7 @@ public class App implements Parcelable {
 	public void writeToParcel(Parcel dest, int flags) {
 		dest.writeString(appName);
 		dest.writeString(packageName);
+		dest.writeString(appIconBase64);
 		dest.writeByte((byte) (blocked ? 1 : 0));
 	}
 }

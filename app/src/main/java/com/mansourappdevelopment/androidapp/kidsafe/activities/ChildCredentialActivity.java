@@ -1,6 +1,7 @@
 package com.mansourappdevelopment.androidapp.kidsafe.activities;
 
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
@@ -87,6 +88,7 @@ public class ChildCredentialActivity extends AppCompatActivity {
             Child child = new Child(name, childEmail, parentEmail);
             child.setGender(gender);
             child.setAge(age);
+            child.setDeviceModel(Build.MANUFACTURER + " " + Build.MODEL);
             
             // Show loading or disable button
             btnCompleteSetup.setEnabled(false);

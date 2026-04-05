@@ -7,7 +7,13 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
+import android.util.Base64;
 import android.util.Log;
+
+import java.io.ByteArrayOutputStream;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -89,7 +95,8 @@ public class UploadAppsService extends JobService {
             Log.i(TAG, "prepareData: online appsList empty");
             for (ApplicationInfo applicationInfo : applicationInfoList) {
                 if (applicationInfo.packageName != null) {
-                    appsList.add(new App((String) applicationInfo.loadLabel(packageManager), (String) applicationInfo.packageName, false));
+                    String iconBase64 = getAppIconAsBase64(applicationInfo.packageName);
+                    appsList.add(new App((String) applicationInfo.loadLabel(packageManager), (String) applicationInfo.packageName, iconBase64, false));
                 }
             }
             //if not, check the app's blocked attribute and update it.
@@ -97,7 +104,8 @@ public class UploadAppsService extends JobService {
             for (ApplicationInfo applicationInfo : applicationInfoList) {
                 for (App app : apps) {
                     if (app.getPackageName().equals((String) applicationInfo.packageName)) {
-                        appsList.add(new App((String) applicationInfo.loadLabel(packageManager), (String) applicationInfo.packageName, app.isBlocked()));
+                        String iconBase64 = getAppIconAsBase64(applicationInfo.packageName);
+                        appsList.add(new App((String) applicationInfo.loadLabel(packageManager), (String) applicationInfo.packageName, iconBase64, app.isBlocked()));
                         Log.i(TAG, "prepareData: if executed");
                     }
                 }
@@ -108,7 +116,8 @@ public class UploadAppsService extends JobService {
             for (ApplicationInfo applicationInfo : applicationInfoList) {
                 if (!apps.contains(new App((String) applicationInfo.loadLabel(packageManager), applicationInfo.packageName, false))
                         && !apps.contains(new App((String) applicationInfo.loadLabel(packageManager), applicationInfo.packageName, true))) {
-                    appsList.add(new App((String) applicationInfo.loadLabel(packageManager), (String) applicationInfo.packageName, false));
+                    String iconBase64 = getAppIconAsBase64(applicationInfo.packageName);
+                    appsList.add(new App((String) applicationInfo.loadLabel(packageManager), (String) applicationInfo.packageName, iconBase64, false));
                 }
             }
 
@@ -128,8 +137,13 @@ public class UploadAppsService extends JobService {
             ApplicationInfo applicationInfo = iterator.next();
             if (applicationInfo.packageName.contains("com.google") || applicationInfo.packageName.matches("com.android.chrome"))
                 continue;
+            
+            // Filter out system apps that don't have a launcher activity (e.g. background services)
+            // But keep system apps like Settings, Calculator if they have a launcher.
             if ((applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0) {
-                iterator.remove();
+                if (packageManager.getLaunchIntentForPackage(applicationInfo.packageName) == null) {
+                    iterator.remove();
+                }
             }
         }
     }
@@ -160,7 +174,7 @@ public class UploadAppsService extends JobService {
     private void writeDataToDB(ArrayList<App> appsList) {
         final ArrayList<App> simpleAppInfo = new ArrayList<>();
         for (App app : appsList) {
-            simpleAppInfo.add(new App(app.getAppName(), app.getPackageName(), app.isBlocked()));
+            simpleAppInfo.add(new App(app.getAppName(), app.getPackageName(), app.getAppIconBase64(), app.isBlocked()));
         }
 
         Query query = databaseReference.child("childs").orderByChild("email").equalTo(childEmail);
@@ -173,7 +187,7 @@ public class UploadAppsService extends JobService {
                     DataSnapshot nodeShot = dataSnapshot.getChildren().iterator().next();
                     String key = nodeShot.getKey();
                     //appList contains drawables, that's why it can't be added to the database.
-                    //for now i will upload the names only
+                    //but we converted them to Base64 strings, so we can upload them now.
                     databaseReference.child("childs").child(key).child("apps").setValue(simpleAppInfo);
                     //databaseReference.child("childs").child(key).child("apps").removeValue();
 
@@ -187,6 +201,32 @@ public class UploadAppsService extends JobService {
         });
 
 
+    }
+
+    private String getAppIconAsBase64(String packageName) {
+        try {
+            Drawable icon = packageManager.getApplicationIcon(packageName);
+            Bitmap bitmap;
+            if (icon.getIntrinsicWidth() <= 0 || icon.getIntrinsicHeight() <= 0) {
+                bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+            } else {
+                bitmap = Bitmap.createBitmap(icon.getIntrinsicWidth(), icon.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+            }
+            Canvas canvas = new Canvas(bitmap);
+            icon.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            icon.draw(canvas);
+
+            // Resize to 96x96 to balance quality and data usage
+            Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 96, 96, true);
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            resizedBitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+            byte[] byteArray = outputStream.toByteArray();
+            return Base64.encodeToString(byteArray, Base64.NO_WRAP);
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.e(TAG, "Error getting icon for " + packageName, e);
+            return "";
+        }
     }
 
 

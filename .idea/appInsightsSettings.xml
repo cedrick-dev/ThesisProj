@@ -9,9 +9,9 @@
               <option name="connection">
                 <ConnectionSetting>
                   <option name="appId" value="com.mansourappdevelopment.androidapp.kidsafe" />
-                  <option name="mobileSdkAppId" value="1:487946012349:android:d11fafe4263b5800" />
-                  <option name="projectId" value="kidsafe-3a667" />
-                  <option name="projectNumber" value="487946012349" />
+                  <option name="mobileSdkAppId" value="1:468468639315:android:7255cbf9a181ca587388a6" />
+                  <option name="projectId" value="aegistnet" />
+                  <option name="projectNumber" value="468468639315" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

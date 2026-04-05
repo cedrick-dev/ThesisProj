@@ -15,6 +15,7 @@ public class Child extends User {
 	private String profileImage;
 	private boolean appDeleted;
 	private String age;
+	private String deviceModel;
 	
 	public Child() {
 	}
@@ -112,5 +113,13 @@ public class Child extends User {
 	
 	public void setAppDeleted(boolean appDeleted) {
 		this.appDeleted = appDeleted;
+	}
+
+	public String getDeviceModel() {
+		return deviceModel;
+	}
+
+	public void setDeviceModel(String deviceModel) {
+		this.deviceModel = deviceModel;
 	}
 }

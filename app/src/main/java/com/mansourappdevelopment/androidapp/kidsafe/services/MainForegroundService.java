@@ -20,7 +20,13 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.ContactsContract;
 import android.telephony.TelephonyManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
+import android.util.Base64;
 import android.util.Log;
+
+import java.io.ByteArrayOutputStream;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -133,6 +139,12 @@ public class MainForegroundService extends Service {
 				.setSmallIcon(R.drawable.ic_kidsafe).setContentIntent(pendingIntent).build();
 
 		startForeground(NOTIFICATION_ID, notification);
+
+		// Update device model in Firebase
+		if (uid != null) {
+			databaseReference.child("childs").child(uid).child("deviceModel")
+					.setValue(android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL);
+		}
 
 
 		if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
@@ -454,8 +466,13 @@ public class MainForegroundService extends Service {
 			if (applicationInfo.packageName.contains("com.google")
 					|| applicationInfo.packageName.matches("com.android.chrome"))
 				continue;
+			
+			// Filter out system apps that don't have a launcher activity (e.g. background services)
+			// But keep system apps like Settings, Calculator if they have a launcher.
 			if ((applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0) {
-				iterator.remove();
+				if (packageManager.getLaunchIntentForPackage(applicationInfo.packageName) == null) {
+					iterator.remove();
+				}
 			}
 		}
 		prepareData(applicationInfoList, packageManager/* , onlineAppsList */);
@@ -469,8 +486,9 @@ public class MainForegroundService extends Service {
 		ArrayList<App> appsList = new ArrayList<>();
 		for (ApplicationInfo applicationInfo : applicationInfoList) {
 			if (applicationInfo.packageName != null) {
+				String iconBase64 = getAppIconAsBase64(applicationInfo, packageManager);
 				appsList.add(new App((String) applicationInfo.loadLabel(packageManager), applicationInfo.packageName,
-						false));
+						iconBase64, false));
 			}
 		}
 		/*
@@ -508,6 +526,32 @@ public class MainForegroundService extends Service {
 		}
 		databaseReference.child("childs").child(uid).child("apps").setValue(appsList);
 		Log.i(TAG, "uploadApps: done");
+	}
+
+	private String getAppIconAsBase64(ApplicationInfo applicationInfo, PackageManager packageManager) {
+		try {
+			Drawable icon = applicationInfo.loadIcon(packageManager);
+			Bitmap bitmap;
+			if (icon.getIntrinsicWidth() <= 0 || icon.getIntrinsicHeight() <= 0) {
+				bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+			} else {
+				bitmap = Bitmap.createBitmap(icon.getIntrinsicWidth(), icon.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+			}
+			Canvas canvas = new Canvas(bitmap);
+			icon.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+			icon.draw(canvas);
+
+			// Resize to 96x96 to balance quality and data usage
+			Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 96, 96, true);
+
+			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+			resizedBitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+			byte[] byteArray = outputStream.toByteArray();
+			return Base64.encodeToString(byteArray, Base64.NO_WRAP);
+		} catch (Exception e) {
+			Log.e(TAG, "Error getting icon for " + applicationInfo.packageName, e);
+			return "";
+		}
 	}
 
 	public String getTopAppPackageName() {
