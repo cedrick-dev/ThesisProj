@@ -63,7 +63,7 @@ public class GeoFencingForegroundService extends Service {
 				stopIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
 		Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-				.setContentTitle(notificationContent).setSmallIcon(R.drawable.ic_kidsafe)
+				.setContentTitle(notificationContent).setSmallIcon(R.drawable.ic_notif_shield)
 				.addAction(R.drawable.ic_cancel, getString(R.string.stop), stopPendingIntent)
 				.setContentIntent(pendingIntent).build();
 

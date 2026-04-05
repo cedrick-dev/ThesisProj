@@ -119,7 +119,7 @@ public class MainForegroundService extends Service {
 				Log.e(TAG, "User not authenticated and no intent extras provided. Stopping service.");
 				// Must call startForeground before stopping to avoid ForegroundServiceDidNotStartInTimeException
 				Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-						.setSmallIcon(R.drawable.ic_kidsafe)
+						.setSmallIcon(R.drawable.ic_notif_shield)
 						.setContentTitle("AegistNet Service Stopping")
 						.setContentText("User not authenticated")
 						.setPriority(NotificationCompat.PRIORITY_LOW)
@@ -136,7 +136,7 @@ public class MainForegroundService extends Service {
 
 		Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
 				// .setContentTitle(notificationContent)
-				.setSmallIcon(R.drawable.ic_kidsafe).setContentIntent(pendingIntent).build();
+				.setSmallIcon(R.drawable.ic_notif_shield).setContentIntent(pendingIntent).build();
 
 		startForeground(NOTIFICATION_ID, notification);
 
@@ -275,7 +275,7 @@ public class MainForegroundService extends Service {
 							PendingIntent pendingIntent = PendingIntent.getActivity(MainForegroundService.this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
 							NotificationCompat.Builder builder = new NotificationCompat.Builder(MainForegroundService.this, HIGH_PRIORITY_CHANNEL_ID)
-									.setSmallIcon(R.drawable.ic_kidsafe)
+									.setSmallIcon(R.drawable.ic_notif_shield)
 									.setContentTitle("Parental Filter Re-Enabled")
 									.setContentText("Tap here to resume screen protection.")
 									.setPriority(NotificationCompat.PRIORITY_HIGH)

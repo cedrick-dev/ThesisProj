@@ -26,13 +26,6 @@
             android:paddingStart="@dimen/margin_32dp"
             android:paddingEnd="@dimen/margin_32dp">
 
-            <!-- Logo -->
-            <ImageView
-                android:layout_width="@dimen/logo_size_large"
-                android:layout_height="@dimen/logo_size_large"
-                android:src="@drawable/aegistnetlogo"
-                android:contentDescription="@string/app_name" />
-
             <!-- App Name (Two-tone) -->
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -84,14 +77,6 @@
         android:paddingEnd="@dimen/margin_24dp"
         android:paddingTop="@dimen/margin_32dp"
         android:paddingBottom="@dimen/margin_48dp">
-
-        <!-- Shield icon -->
-        <ImageView
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginBottom="@dimen/margin_16dp"
-            android:src="@drawable/ic_shield_check"
-            android:contentDescription="@string/child" />
 
         <!-- Description -->
         <TextView
