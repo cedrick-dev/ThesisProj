@@ -4,22 +4,23 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/background_warm"
     android:focusableInTouchMode="true"
-    android:gravity="center"
     android:layoutDirection="locale"
     android:orientation="vertical"
     tools:context=".activities.SignUpActivity">
 
-    <ScrollView
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:fillViewport="true">
+    <!-- Dark Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/header_height_small"
+        android:background="@drawable/bg_gradient_header">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
+            android:layout_centerInParent="true"
+            android:gravity="center_horizontal"
             android:orientation="vertical">
 
             <de.hdodenhof.circleimageview.CircleImageView
@@ -27,14 +28,44 @@
                 android:layout_width="@dimen/circular_image_width_large"
                 android:layout_height="@dimen/circular_image_height_large"
                 android:src="@drawable/ic_profile_image"
-                app:civ_border_color="@color/flatui_clouds"
-                app:civ_border_width="@dimen/circular_image_border_large"
-                app:civ_circle_background_color="@color/flatui_clouds" />
+                app:civ_border_color="@color/colorPrimary"
+                app:civ_border_width="3dp"
+                app:civ_circle_background_color="@color/surface_medium" />
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/margin_16dp"
+                android:text="@string/create_account"
+                android:textColor="@color/text_on_dark"
+                android:textSize="@dimen/text_size_22sp"
+                android:fontFamily="@font/open_sans_bold"
+                android:textStyle="bold" />
 
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- Form Area -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/margin_24dp"
+            android:paddingEnd="@dimen/margin_24dp"
+            android:paddingTop="@dimen/margin_24dp"
+            android:paddingBottom="@dimen/margin_32dp">
+
+            <!-- Card container for form -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@drawable/bg_card_elevated"
+                android:elevation="4dp"
                 android:orientation="vertical"
                 android:padding="@dimen/padding_24dp">
 
@@ -67,7 +98,6 @@
                     android:hint="@string/password"
                     android:inputType="textPassword" />
 
-
             </LinearLayout>
 
             <Button
@@ -75,21 +105,19 @@
                 style="@style/OkButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/margin_32dp"
-                android:layout_marginTop="@dimen/margin_8dp"
-                android:layout_marginEnd="@dimen/margin_32dp"
-                android:layout_marginBottom="@dimen/margin_8dp"
+                android:layout_marginTop="@dimen/margin_24dp"
                 android:text="@string/sign_up" />
 
             <ProgressBar
                 android:id="@+id/progressBar"
                 style="?android:attr/progressBarStyle"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
-                android:layout_marginBottom="20dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center"
+                android:layout_marginTop="@dimen/margin_16dp"
                 android:visibility="gone" />
-
 
         </LinearLayout>
     </ScrollView>
+
 </LinearLayout>

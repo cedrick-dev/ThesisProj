@@ -44,7 +44,7 @@ public class LanguageSelectionDialogFragment extends DialogFragment {
 		spinnerLanguageEntries = view.findViewById(R.id.spinnerLanguageEntries);
 		if (appLanguage.equals("en"))
 			spinnerLanguageEntries.setSelection(0);
-		else if (appLanguage.equals("ar"))
+		else if (appLanguage.equals("tl"))
 			spinnerLanguageEntries.setSelection(1);
 
 		btnOkLanguageSelection = view.findViewById(R.id.btnOkLanguageSelection);

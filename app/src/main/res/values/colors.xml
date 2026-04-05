@@ -1,19 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">@color/white</color>
-    <color name="colorPrimaryDark">@color/flatui_silver</color>
-    <color name="colorAccent">@color/flatui_turquoise</color>
+    <!-- Theme Colors -->
+    <color name="colorPrimary">#FF6B35</color>
+    <color name="colorPrimaryDark">#E85A28</color>
+    <color name="colorPrimaryLight">#FF8F66</color>
+    <color name="colorAccent">#FF6B35</color>
 
+    <!-- Surfaces -->
+    <color name="surface_dark">#1A1D2E</color>
+    <color name="surface_medium">#252840</color>
+    <color name="surface_card">#FFFFFF</color>
+    <color name="background_warm">#F5F6FA</color>
 
+    <!-- Text -->
+    <color name="text_primary">#1A1D2E</color>
+    <color name="text_secondary">#6B7280</color>
+    <color name="text_on_dark">#FFFFFF</color>
+    <color name="text_on_dark_secondary">#B0B3C5</color>
+
+    <!-- Status Colors -->
+    <color name="success_green">#34D399</color>
+    <color name="error_red">#EF4444</color>
+    <color name="divider">#E5E7EB</color>
+
+    <!-- Legacy mappings (keep for compatibility) -->
     <color name="white">#FFFFFF</color>
     <color name="flatui_turquoise">#FF6B35</color>
-    <color name="flatui_wet_asphalt">#34495e</color>
-    <color name="flatui_midnight_blue">#2c3e50</color>
-    <color name="flatui_pumpkin">#d35400</color>
-    <color name="flatui_pomegranate">#c0392b</color>
-    <color name="flatui_clouds">#ecf0f1</color>
-    <color name="flatui_silver">#bdc3c7</color>
-    <color name="flatui_asbestos">#7f8c8d</color>
+    <color name="flatui_wet_asphalt">#1A1D2E</color>
+    <color name="flatui_midnight_blue">#1A1D2E</color>
+    <color name="flatui_pumpkin">#E85A28</color>
+    <color name="flatui_pomegranate">#EF4444</color>
+    <color name="flatui_clouds">#F5F6FA</color>
+    <color name="flatui_silver">#D1D5DB</color>
+    <color name="flatui_asbestos">#6B7280</color>
 
+    <!-- Gradient Colors -->
+    <color name="gradient_header_start">#1A1D2E</color>
+    <color name="gradient_header_end">#2D3154</color>
+    <color name="gradient_button_start">#FF6B35</color>
+    <color name="gradient_button_end">#E85A28</color>
 
+    <!-- Input -->
+    <color name="input_border">#D1D5DB</color>
+    <color name="input_border_focused">#FF6B35</color>
+    <color name="input_background">#FFFFFF</color>
+
+    <!-- Ripple -->
+    <color name="ripple_light">#22000000</color>
+    <color name="ripple_orange">#33FF6B35</color>
 </resources>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <dimen name="circular_image_border_large">4dp</dimen>
+    <dimen name="circular_image_border_large">3dp</dimen>
     <dimen name="circular_image_width_large">96dp</dimen>
     <dimen name="circular_image_height_large">96dp</dimen>
 
@@ -9,7 +9,9 @@
     <dimen name="circular_image_width_small">48dp</dimen>
     <dimen name="circular_image_height_small">48dp</dimen>
 
+    <dimen name="margin_4dp">4dp</dimen>
     <dimen name="margin_8dp">8dp</dimen>
+    <dimen name="margin_12dp">12dp</dimen>
     <dimen name="margin_16dp">16dp</dimen>
     <dimen name="margin_24dp">24dp</dimen>
     <dimen name="margin_32dp">32dp</dimen>
@@ -17,20 +19,35 @@
     <dimen name="margin_64dp">64dp</dimen>
     <dimen name="margin_128dp">128dp</dimen>
 
-
     <dimen name="padding_2dp">2dp</dimen>
     <dimen name="padding_8dp">8dp</dimen>
+    <dimen name="padding_12dp">12dp</dimen>
+    <dimen name="padding_16dp">16dp</dimen>
     <dimen name="padding_24dp">24dp</dimen>
     <dimen name="padding_32dp">32dp</dimen>
 
+    <dimen name="text_size_12sp">12sp</dimen>
+    <dimen name="text_size_14sp">14sp</dimen>
     <dimen name="text_size_16sp">16sp</dimen>
     <dimen name="text_size_18sp">18sp</dimen>
     <dimen name="text_size_20sp">20sp</dimen>
+    <dimen name="text_size_22sp">22sp</dimen>
     <dimen name="text_size_24sp">24sp</dimen>
+    <dimen name="text_size_28sp">28sp</dimen>
     <dimen name="text_size_32sp">32sp</dimen>
 
+    <dimen name="card_corner_radius">20dp</dimen>
+    <dimen name="card_elevation">6dp</dimen>
+    <dimen name="button_corner_radius">14dp</dimen>
+    <dimen name="button_height">56dp</dimen>
+    <dimen name="button_padding_vertical">16dp</dimen>
+    <dimen name="input_corner_radius">12dp</dimen>
 
-    <dimen name="card_corner_radius">3dp</dimen>
-    <dimen name="card_elevation">1dp</dimen>
-    <dimen name="margin_4dp">4dp</dimen>
+    <dimen name="header_height">280dp</dimen>
+    <dimen name="header_height_small">200dp</dimen>
+
+    <dimen name="logo_size_large">100dp</dimen>
+    <dimen name="logo_size_medium">72dp</dimen>
+
+    <dimen name="mode_card_icon_size">56dp</dimen>
 </resources>

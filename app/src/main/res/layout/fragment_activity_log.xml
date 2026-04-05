@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/background_warm"
     android:layoutDirection="locale"
     android:gravity="center"
     android:orientation="vertical">
@@ -10,12 +10,13 @@
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/activityLogTabLayout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:background="@color/surface_card"
+        android:elevation="2dp" />
 
     <androidx.viewpager.widget.ViewPager
         android:id="@+id/activityLogViewPager"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
-
+        android:layout_height="match_parent" />
 
 </LinearLayout>

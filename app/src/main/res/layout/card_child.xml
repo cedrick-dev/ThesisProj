@@ -4,57 +4,64 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="@dimen/margin_8dp"
-    android:background="@color/white"
-    app:cardCornerRadius="@dimen/card_corner_radius"
+    android:layout_marginStart="@dimen/margin_8dp"
+    android:layout_marginEnd="@dimen/margin_8dp"
+    android:layout_marginBottom="@dimen/margin_12dp"
     android:layoutDirection="locale"
+    app:cardBackgroundColor="@color/surface_card"
+    app:cardCornerRadius="@dimen/card_corner_radius"
     app:cardElevation="@dimen/card_elevation">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="@dimen/padding_16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/imgChild"
                 android:layout_width="@dimen/circular_image_width_small"
                 android:layout_height="@dimen/circular_image_height_small"
-                android:layout_margin="@dimen/margin_4dp"
                 android:src="@drawable/ic_face"
-                app:civ_border_color="@color/flatui_clouds"
-                app:civ_border_width="@dimen/circular_image_border_small" />
+                app:civ_border_color="@color/colorPrimary"
+                app:civ_border_width="2dp" />
 
-            <FrameLayout
-                android:layout_width="match_parent"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_margin="@dimen/margin_4dp">
+                android:layout_weight="1"
+                android:layout_marginStart="@dimen/margin_12dp"
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/txtChildName"
-                    style="@style/CardHeader"
                     android:layout_width="wrap_content"
-                    android:layout_gravity="start|center"
-                    android:text="@string/child_name" />
+                    android:layout_height="wrap_content"
+                    android:text="@string/child_name"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/text_size_16sp"
+                    android:fontFamily="@font/open_sans_bold"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
+            <Switch
+                android:id="@+id/switchLockPhone"
+                style="@style/CardSwitch" />
 
-                <Switch
-                    android:id="@+id/switchLockPhone"
-                    style="@style/CardSwitch" />
-
-            </FrameLayout>
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingLeft="64dp">
+            android:paddingStart="60dp"
+            android:visibility="gone">
 
             <TextView
                 style="@style/CardHeader"
@@ -82,30 +89,33 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_gravity="center"
-                android:layout_margin="@dimen/margin_4dp"
-                android:background="@color/flatui_asbestos" />
+                android:layout_marginTop="@dimen/margin_12dp"
+                android:layout_marginBottom="@dimen/margin_12dp"
+                android:background="@color/divider" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:layout_margin="@dimen/margin_4dp"
-                    android:src="@drawable/ic_delete" />
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="@dimen/margin_8dp"
+                    android:src="@drawable/ic_delete"
+                    android:tint="@color/error_red" />
 
                 <TextView
                     android:id="@+id/txtDeletedApp"
-                    style="@style/CardBody"
                     android:layout_width="wrap_content"
-                    android:text="@string/deleted_the_app" />
+                    android:layout_height="wrap_content"
+                    android:text="@string/deleted_the_app"
+                    android:textColor="@color/error_red"
+                    android:textSize="@dimen/text_size_14sp"
+                    android:fontFamily="@font/open_sans_regular" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-
 
 </androidx.cardview.widget.CardView>

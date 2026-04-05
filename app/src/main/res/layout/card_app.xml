@@ -3,44 +3,57 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="@dimen/margin_8dp"
-    android:background="@color/white"
+    android:layout_marginStart="@dimen/margin_4dp"
+    android:layout_marginEnd="@dimen/margin_4dp"
+    android:layout_marginBottom="@dimen/margin_8dp"
     android:layoutDirection="locale"
-    app:cardCornerRadius="@dimen/card_corner_radius"
-    app:cardElevation="@dimen/card_elevation">
-
+    app:cardBackgroundColor="@color/surface_card"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="3dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="horizontal">
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="@dimen/padding_12dp">
 
-        <LinearLayout
-            android:layout_width="@dimen/circular_image_width_small"
-            android:layout_height="@dimen/circular_image_height_small"
-            android:layout_margin="@dimen/margin_4dp">
+        <!-- App Icon Area -->
+        <FrameLayout
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_card_elevated"
+            android:gravity="center">
 
             <TextView
                 android:id="@+id/txtAppBackground"
-                style="@style/CardTextBackground" />
-        </LinearLayout>
-
-
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center">
-
-            <TextView
-                android:id="@+id/txtAppName"
-                style="@style/CardHeader"
-                android:layout_width="150dp"
-                android:layout_gravity="start|center"
-                android:text="@string/child_app_name" />
-
-            <Switch
-                android:id="@+id/switchAppState"
-                style="@style/CardSwitch" />
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_gradient_header"
+                android:gravity="center"
+                android:textAlignment="center"
+                android:textColor="@color/white"
+                android:textSize="@dimen/text_size_14sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/open_sans_bold" />
         </FrameLayout>
+
+        <TextView
+            android:id="@+id/txtAppName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="@dimen/margin_12dp"
+            android:layout_marginEnd="@dimen/margin_8dp"
+            android:text="@string/child_app_name"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_size_14sp"
+            android:fontFamily="@font/open_sans_regular"
+            android:ellipsize="end"
+            android:maxLines="1" />
+
+        <Switch
+            android:id="@+id/switchAppState"
+            style="@style/CardSwitch" />
     </LinearLayout>
 </androidx.cardview.widget.CardView>

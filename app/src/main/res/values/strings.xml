@@ -189,4 +189,16 @@
     <string name="nsfw_accessibility_service_description">Used by AegistNet to automatically navigate back when inappropriate content is detected.</string>
     <string name="nsfw_accessibility_service_label">AegistNet Protection Action</string>
     <string name="accessibility_service_description">AegistNet Protection automates back button presses to instantly block explicit content.</string>
+
+    <!-- Redesign strings -->
+    <string name="tagline">Protecting your family, digitally.</string>
+    <string name="scan_qr_code">Scan QR Code</string>
+    <string name="child_device_setup_desc">Scan the QR code from your parent\'s device to connect</string>
+    <string name="choose_your_role">Choose your role</string>
+    <string name="who_uses_device_subtitle">Select how this device will be used</string>
+    <string name="parent_role_desc">Monitor and manage your child\'s device</string>
+    <string name="child_role_desc">Connect this device to your parent</string>
+    <string name="create_account">Create Account</string>
+    <string name="get_started">Get Started</string>
+    <string name="verify_your_email">Verify Your Email</string>
 </resources>

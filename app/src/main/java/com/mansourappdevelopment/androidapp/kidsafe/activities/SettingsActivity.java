@@ -197,8 +197,8 @@ public class SettingsActivity extends AppCompatActivity implements OnLanguageSel
 		String appLanguage = SharedPrefsUtils.getStringPreference(this, Constant.APP_LANGUAGE, "en");
 		if (language.equals("English") && !appLanguage.equals("en")) {
 			LocaleUtils.setLocale(this, "en");
-		} else if (language.equals("Arabic") && !appLanguage.equals("ar")) {
-			LocaleUtils.setLocale(this, "ar");
+		} else if (language.equals("Tagalog") && !appLanguage.equals("tl")) {
+			LocaleUtils.setLocale(this, "tl");
 			
 		}
 		

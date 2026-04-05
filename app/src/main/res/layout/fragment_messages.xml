@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/background_warm"
     android:gravity="center"
     android:layoutDirection="locale"
     android:orientation="vertical">
@@ -19,6 +19,7 @@
         android:id="@+id/recyclerViewMessages"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="@dimen/padding_2dp" />
+        android:padding="@dimen/padding_8dp"
+        android:clipToPadding="false" />
 
 </LinearLayout>

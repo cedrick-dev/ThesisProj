@@ -3,9 +3,9 @@
     android:id="@+id/toolbar"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/white"
+    android:background="@color/surface_dark"
     android:layoutDirection="locale"
-    android:padding="@dimen/padding_8dp">
+    android:padding="@dimen/padding_12dp">
 
     <ImageButton
         android:id="@+id/btnBack"
@@ -13,7 +13,8 @@
         android:layout_height="wrap_content"
         android:layout_gravity="start|center_vertical"
         android:background="@android:color/transparent"
-        android:src="@drawable/ic_arrow_back" />
+        android:src="@drawable/ic_arrow_back"
+        android:tint="@color/text_on_dark" />
 
     <TextView
         android:id="@+id/txtTitle"
@@ -22,8 +23,9 @@
         android:layout_gravity="center_vertical"
         android:layout_marginStart="64dp"
         android:text="@string/home"
-        android:textColor="@color/flatui_wet_asphalt"
-        android:textSize="@dimen/text_size_18sp" />
+        android:textColor="@color/text_on_dark"
+        android:textSize="@dimen/text_size_18sp"
+        android:fontFamily="@font/open_sans_bold" />
 
     <ImageButton
         android:id="@+id/btnSettings"
@@ -31,5 +33,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical|end"
         android:background="@android:color/transparent"
-        android:src="@drawable/ic_settings" />
+        android:src="@drawable/ic_settings"
+        android:tint="@color/text_on_dark" />
 </FrameLayout>

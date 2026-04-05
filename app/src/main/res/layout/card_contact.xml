@@ -3,78 +3,88 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="@dimen/margin_8dp"
-    android:background="@color/white"
+    android:layout_marginStart="@dimen/margin_4dp"
+    android:layout_marginEnd="@dimen/margin_4dp"
+    android:layout_marginBottom="@dimen/margin_8dp"
     android:layoutDirection="locale"
-    app:cardCornerRadius="@dimen/card_corner_radius"
-    app:cardElevation="@dimen/card_elevation">
-
+    app:cardBackgroundColor="@color/surface_card"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="3dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="horizontal">
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="@dimen/padding_12dp">
 
-        <LinearLayout
-            android:layout_width="@dimen/circular_image_width_small"
-            android:layout_height="@dimen/circular_image_height_small"
-            android:layout_margin="@dimen/margin_4dp">
+        <!-- Avatar -->
+        <FrameLayout
+            android:layout_width="44dp"
+            android:layout_height="44dp">
 
             <TextView
                 android:id="@+id/txtContactBackground"
-                style="@style/CardTextBackground" />
-        </LinearLayout>
-
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_gradient_header"
+                android:gravity="center"
+                android:textAlignment="center"
+                android:textColor="@color/white"
+                android:textSize="@dimen/text_size_14sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/open_sans_bold" />
+        </FrameLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_margin="@dimen/margin_4dp"
+            android:layout_weight="1"
+            android:layout_marginStart="@dimen/margin_12dp"
             android:orientation="vertical">
 
-            <FrameLayout
-                android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/txtContactName"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center">
-
-                <TextView
-                    android:id="@+id/txtContactName"
-                    style="@style/CardHeader"
-                    android:layout_width="wrap_content" />
-
-                <ImageButton
-                    android:id="@+id/imgBtnCall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center|end"
-                    android:layout_marginStart="@dimen/margin_4dp"
-                    android:layout_marginTop="@dimen/margin_4dp"
-                    android:layout_marginEnd="@dimen/margin_32dp"
-                    android:layout_marginBottom="@dimen/margin_4dp"
-                    android:background="@android:color/transparent"
-                    android:src="@drawable/ic_call" />
-
-                <ImageButton
-                    android:id="@+id/imgBtnMessage"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center|end"
-                    android:layout_margin="@dimen/margin_4dp"
-                    android:background="@android:color/transparent"
-                    android:src="@drawable/ic_message" />
-            </FrameLayout>
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_size_14sp"
+                android:fontFamily="@font/open_sans_bold"
+                android:textStyle="bold"
+                android:ellipsize="end"
+                android:maxLines="1" />
 
             <TextView
                 android:id="@+id/txtContactNumber"
-                style="@style/CardBody"
-                android:layout_width="wrap_content" />
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-
-            </FrameLayout>
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_size_12sp"
+                android:fontFamily="@font/open_sans_regular" />
         </LinearLayout>
+
+        <!-- Action Buttons -->
+        <ImageButton
+            android:id="@+id/imgBtnCall"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginEnd="@dimen/margin_8dp"
+            android:background="?android:selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_call"
+            android:scaleType="centerInside"
+            android:tint="@color/colorPrimary"
+            android:contentDescription="@string/calls" />
+
+        <ImageButton
+            android:id="@+id/imgBtnMessage"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?android:selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_message"
+            android:scaleType="centerInside"
+            android:tint="@color/colorPrimary"
+            android:contentDescription="@string/messages" />
     </LinearLayout>
+
 </androidx.cardview.widget.CardView>

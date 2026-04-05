@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- QR code scan icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M3,11h2V9H3v2zM3,7h2V5H3v2zM7,3v2h2V3H7zM3,3v2h2V3H3zM11,3H9v2h2V3zM5,7H3v2h2V7z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M3,11h8v8H3zM5,13v4h4v-4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M13,3v8h8V3zM19,9h-4V5h4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M3,3v8h8V3zM9,9H5V5h4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M13,13h2v2h-2z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M13,17h2v2h-2z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M17,13h2v2h-2z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M17,17h4v4h-4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M13,21h2v-2h-2z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M17,13v-2h4v2z" />
+</vector>
