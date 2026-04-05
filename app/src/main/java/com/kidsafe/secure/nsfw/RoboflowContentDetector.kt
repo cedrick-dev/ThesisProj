@@ -150,10 +150,15 @@ class RoboflowContentDetector(private val context: Context) {
             val bitmapCopy = bitmap.copy(Bitmap.Config.ARGB_8888, false)
 
             try {
-                // Fetch the gender LIVE right before inference so if the parent changes it, it instantly updates!
+                // Fetch GENDER and FILTER LEVEL live so parent dashboard changes take instant effect.
                 val childGender = com.mansourappdevelopment.androidapp.kidsafe.utils.SharedPrefsUtils.getStringPreference(context, "child_gender", null)
                 val isBoy = childGender?.trim()?.equals("boy", ignoreCase = true) == true || childGender?.trim()?.equals("male", ignoreCase = true) == true
                 val isGirl = childGender?.trim()?.equals("girl", ignoreCase = true) == true || childGender?.trim()?.equals("female", ignoreCase = true) == true
+
+                // Filter level: 1 = Strict (7-11), 2 = Moderate (12-14), 3 = Tolerant (15-17)
+                // Default to 2 (Moderate) if not yet set by the parent.
+                val filterLevelStr = com.mansourappdevelopment.androidapp.kidsafe.utils.SharedPrefsUtils.getStringPreference(context, "filter_level", "2")
+                val filterLevel = filterLevelStr?.toIntOrNull()?.coerceIn(1, 3) ?: 2
 
                 // 1. Load Bitmap into TensorImage
                 var tensorImage = TensorImage(DataType.UINT8)
@@ -164,7 +169,7 @@ class RoboflowContentDetector(private val context: Context) {
                 tfl.run(tensorImage.buffer, outWrapper)
 
                 // 3. Parse predictions from YOLOv8 format
-                val raw = parseYoloV8Predictions(outBuffer, originalWidth, originalHeight, shouldLogDetails, childGender, isBoy, isGirl)
+                val raw = parseYoloV8Predictions(outBuffer, originalWidth, originalHeight, shouldLogDetails, childGender, isBoy, isGirl, filterLevel)
 
                 // 4. NMS
                 val nms = nonMaxSuppression(raw)
@@ -217,8 +222,14 @@ class RoboflowContentDetector(private val context: Context) {
         logDetails: Boolean,
         childGender: String?,
         isBoy: Boolean,
-        isGirl: Boolean
+        isGirl: Boolean,
+        filterLevel: Int = 2   // 1 = Strict, 2 = Moderate, 3 = Tolerant
     ): List<Prediction> {
+        if (logDetails) {
+            val levelName = when (filterLevel) { 1 -> "Strict"; 2 -> "Moderate"; else -> "Tolerant" }
+            val genderTag = when { isBoy -> "boy"; isGirl -> "girl"; else -> "unknown" }
+            Log.d(TAG, "🛡 Filter: Level $filterLevel ($levelName) | Gender: $genderTag")
+        }
         val list = ArrayList<Prediction>(100)
 
         // Extract feature arrays
@@ -238,39 +249,49 @@ class RoboflowContentDetector(private val context: Context) {
             var confidence = 0f
             var classId = 0
             for (c in 0 until numClasses) {
-                // GENDER FILTERING RULE:
-                // class 0 (bikinis / swimwear)
-                // class 1 (nudity)
-                // class 2 (mens underwear)
-                // boy (male):  flag class 0 (bikinis), class 1 (nudity)
-                // girl (female): flag class 2 (mens underwear), class 1 (nudity)
-                val isBlockedClass = if (isBoy) {
-                    c == 0 || c == 1
-                } else if (isGirl) {
-                    c == 2 || c == 1
-                } else {
-                    if (logDetails && c == 0) {
-                        Log.e(TAG, "GENDER UNRECOGNIZED: '$childGender'. Falling back to NUDITY-ONLY blocking.")
+                // ─── CLASS LEGEND ────────────────────────────────────────────
+                // class 0 = Bikinis / Swimwear
+                // class 1 = Explicit Nudity
+                // class 2 = Men's Underwear
+                //
+                // ─── BLOCKING MATRIX (level × gender) ───────────────────────
+                // Level 1 – Strict   (ages 7-11):  block ALL classes (0,1,2) for every gender
+                // Level 2 – Moderate (ages 12-14): boy→ class 0,1 | girl→ class 2,1
+                // Level 3 – Tolerant  (ages 15-17): block class 1 (nudity) only, all genders
+                val isBlockedClass = when (filterLevel) {
+                    1 -> true // Strict: every class is blocked
+                    3 -> c == 1 // Tolerant: nudity only
+                    else -> { // 2 = Moderate (default)
+                        if (isBoy) {
+                            c == 0 || c == 1
+                        } else if (isGirl) {
+                            c == 2 || c == 1
+                        } else {
+                            // Gender unknown — nudity-only safe fallback
+                            if (logDetails && c == 0) {
+                                Log.e(TAG, "GENDER UNRECOGNIZED: '$childGender' at Level 2. Falling back to nudity-only.")
+                            }
+                            c == 1
+                        }
                     }
-                    c == 1 // FIX: Fallback should block nudity (class 1), NOT class 2 (mens underwear)
                 }
 
                 if (!isBlockedClass) continue
 
                 val score = output[4 + c][i]
 
-                // BIKINI OVERRIDE FOR GIRLS:
-                // The model can misclassify female bikinis/swimwear (class 0) as men's underwear (class 2).
-                // If we are about to flag class 2 for a girl, check if the bikini score (class 0)
-                // is equal or higher — if so, it is almost certainly a swimsuit, not underwear.
-                // In that case, skip this anchor entirely so it is never flagged.
-                if (isGirl && c == 2 && numClasses > 0) {
-                    val bikiniScore = output[4 + 0][i] // class 0 = bikini / swimwear
+                // BIKINI OVERRIDE FOR GIRLS (Level 2 only):
+                // At Moderate level the model can misclassify a female bikini (class 0)
+                // as men's underwear (class 2). If the bikini score is >= the underwear
+                // score, treat it as swimwear for a girl and skip — it is appropriate.
+                // At Level 1 (Strict) this override does NOT apply: all content is blocked.
+                if (filterLevel == 2 && isGirl && c == 2 && numClasses > 0) {
+                    val bikiniScore = output[4 + 0][i]
                     if (bikiniScore >= score) {
                         if (logDetails) {
-                            Log.d(TAG, "BIKINI OVERRIDE: anchor $i — bikini score (${ "%.3f".format(bikiniScore)}) >= underwear score (${ "%.3f".format(score)}). Treating as swimwear for girl — skipping.")
+                            Log.d(TAG, "BIKINI OVERRIDE [Mod/Girl]: anchor $i — bikini ${ "%.3f".format(bikiniScore)} >= underwear ${ "%.3f".format(score)} → skip")
                         }
-                        continue // do NOT flag this anchor for this girl
+                        continue
                     }
                 }
 
