@@ -135,6 +135,7 @@ class ScreenFilterService : Service() {
         // Direct, bulletproof Firebase listener attached exactly to this service!
         val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
         if (uid != null) {
+            // ── Listener 1: gender ──────────────────────────────────────────
             com.google.firebase.database.FirebaseDatabase.getInstance().getReference("users/childs/$uid/gender")
                 .addValueEventListener(object : com.google.firebase.database.ValueEventListener {
                     override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
@@ -148,7 +149,31 @@ class ScreenFilterService : Service() {
                     }
 
                     override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
-                        Log.e(TAG, "🔥 ScreenFilter: Firebase read failed: ${error.message}")
+                        Log.e(TAG, "🔥 ScreenFilter: Firebase gender read failed: ${error.message}")
+                    }
+                })
+
+            // ── Listener 2: filter level ────────────────────────────────────
+            // Watches contentFilters/filterLevel (1 = Strict, 2 = Moderate, 3 = Lenient)
+            // Parent can change this live from the dashboard; child device updates instantly.
+            com.google.firebase.database.FirebaseDatabase.getInstance()
+                .getReference("users/childs/$uid/contentFilters/filterLevel")
+                .addValueEventListener(object : com.google.firebase.database.ValueEventListener {
+                    override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                        val level = snapshot.getValue(Long::class.java)?.toInt()
+                        if (level != null && level in 1..3) {
+                            Log.d(TAG, "🔥 ScreenFilter caught LIVE FILTER LEVEL: $level")
+                            com.mansourappdevelopment.androidapp.kidsafe.utils.SharedPrefsUtils.setStringPreference(
+                                this@ScreenFilterService, "filter_level", level.toString()
+                            )
+                        } else {
+                            // No level stored yet — keep whatever is already in prefs (or default 2)
+                            Log.d(TAG, "🔥 ScreenFilter: filterLevel not set in Firebase — using cached/default level")
+                        }
+                    }
+
+                    override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                        Log.e(TAG, "🔥 ScreenFilter: Firebase filterLevel read failed: ${error.message}")
                     }
                 })
         } else {
@@ -158,6 +183,7 @@ class ScreenFilterService : Service() {
         setupOverlay()
         listenForParentUnblocks()
     }
+
 
     /**
      * Watches the child's app list in Firebase.
