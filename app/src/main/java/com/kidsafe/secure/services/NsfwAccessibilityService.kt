@@ -242,7 +242,7 @@ class NsfwAccessibilityService : AccessibilityService() {
 
     private fun blockUrl(url: String) {
         val intent = Intent(this, BlockedAppActivity::class.java).apply {
-            putExtra(MainForegroundService.BLOCKED_APP_NAME_EXTRA, "Blocked Website: $url")
+            putExtra(MainForegroundService.BLOCKED_APP_NAME_EXTRA, "Inappropriate Content")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         try {
