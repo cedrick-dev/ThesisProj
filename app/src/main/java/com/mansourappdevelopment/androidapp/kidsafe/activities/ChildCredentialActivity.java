@@ -76,6 +76,19 @@ public class ChildCredentialActivity extends AppCompatActivity {
             return;
         }
 
+        try {
+            int ageInt = Integer.parseInt(age);
+            if (ageInt < 1 || ageInt > 17) {
+                edtChildAge.setError("Age must be between 1 and 17");
+                edtChildAge.requestFocus();
+                return;
+            }
+        } catch (NumberFormatException e) {
+            edtChildAge.setError("Please enter a valid age");
+            edtChildAge.requestFocus();
+            return;
+        }
+
         String gender = "Boy";
         int checkedId = rgGender.getCheckedRadioButtonId();
         if (checkedId == R.id.rbGirl) {
