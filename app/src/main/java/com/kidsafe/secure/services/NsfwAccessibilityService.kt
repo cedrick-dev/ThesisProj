@@ -30,6 +30,41 @@ class NsfwAccessibilityService : AccessibilityService() {
                 "com.google.android.googlequicksearchbox:id/search_box"
             )
         )
+
+        // Mapping of app package names to their web domains.
+        // When an app is blocked, these domains are auto-added to the dynamic blocklist.
+        private val APP_TO_DOMAIN_MAP = mapOf(
+            // Social Media
+            "com.facebook.katana" to listOf("facebook.com", "fb.com", "m.facebook.com"),
+            "com.facebook.lite" to listOf("facebook.com", "fb.com", "m.facebook.com"),
+            "com.facebook.orca" to listOf("messenger.com", "m.me"),
+            "com.instagram.android" to listOf("instagram.com"),
+            "com.twitter.android" to listOf("twitter.com", "x.com"),
+            "com.zhiliaoapp.musically" to listOf("tiktok.com"),  // TikTok
+            "com.ss.android.ugc.trill" to listOf("tiktok.com"),  // TikTok (alternate)
+            "com.snapchat.android" to listOf("snapchat.com"),
+            "com.pinterest" to listOf("pinterest.com"),
+            "com.reddit.frontpage" to listOf("reddit.com"),
+            "com.tumblr" to listOf("tumblr.com"),
+            
+            // Messaging
+            "com.whatsapp" to listOf("web.whatsapp.com", "whatsapp.com"),
+            "org.telegram.messenger" to listOf("telegram.org", "web.telegram.org", "t.me"),
+            "com.discord" to listOf("discord.com", "discord.gg"),
+            "com.viber.voip" to listOf("viber.com"),
+            
+            // Video / Streaming
+            "com.google.android.youtube" to listOf("youtube.com", "m.youtube.com", "youtu.be"),
+            "com.netflix.mediaclient" to listOf("netflix.com"),
+            "com.spotify.music" to listOf("spotify.com", "open.spotify.com"),
+            
+            // Gaming
+            "com.roblox.client" to listOf("roblox.com"),
+            
+            // Dating
+            "com.tinder" to listOf("tinder.com"),
+            "com.bumble.app" to listOf("bumble.com")
+        )
     }
 
     private var isWebFilterEnabled = true
@@ -139,7 +174,13 @@ class NsfwAccessibilityService : AccessibilityService() {
 
                 previousBlockedStates[pkg] = nowBlocked
 
-                if (wasBlocked && !nowBlocked) {
+                if (!wasBlocked && nowBlocked) {
+                    // App just got blocked → auto-add its web domains to the dynamic blocklist
+                    syncAppDomainToBlockedSites(pkg, block = true)
+                } else if (wasBlocked && !nowBlocked) {
+                    // App just got unblocked → remove auto-added domains and reset strike counter
+                    syncAppDomainToBlockedSites(pkg, block = false)
+                    
                     val prefs = getSharedPreferences("WebFilterIncidentPrefs", Context.MODE_PRIVATE)
                     val countKey = "web_strike_count_$pkg"
                     val previous = prefs.getInt(countKey, 0)
@@ -303,6 +344,53 @@ class NsfwAccessibilityService : AccessibilityService() {
             startActivity(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch BlockedAppActivity", e)
+        }
+    }
+
+    /**
+     * Auto-syncs an app's known web domains to the Firebase blockedSites node.
+     * When block=true, adds each domain with source="auto:{packageName}".
+     * When block=false, removes only auto-added entries for that package.
+     */
+    private fun syncAppDomainToBlockedSites(packageName: String, block: Boolean) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val domains = APP_TO_DOMAIN_MAP[packageName.trim().lowercase()]
+        if (domains.isNullOrEmpty()) {
+            Log.d(TAG, "No domain mapping for package: $packageName")
+            return
+        }
+
+        val blockedSitesRef = FirebaseDatabase.getInstance()
+            .getReference("users/childs/$uid/blockedSites")
+
+        if (block) {
+            // Add each domain with a source tag so we can identify auto-added entries
+            for (domain in domains) {
+                val entry = mapOf(
+                    "url" to domain,
+                    "source" to "auto:$packageName"
+                )
+                blockedSitesRef.push().setValue(entry)
+                Log.i(TAG, "🌐 Auto-blocked website '$domain' (from app $packageName)")
+            }
+        } else {
+            // Remove only auto-added entries for this specific package
+            blockedSitesRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    for (child in snapshot.children) {
+                        val source = child.child("source").getValue(String::class.java)
+                        if (source == "auto:$packageName") {
+                            child.ref.removeValue()
+                            val url = child.child("url").getValue(String::class.java)
+                            Log.i(TAG, "🌐 Auto-unblocked website '$url' (from app $packageName)")
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Failed to clean up auto-blocked sites", error.toException())
+                }
+            })
         }
     }
 
