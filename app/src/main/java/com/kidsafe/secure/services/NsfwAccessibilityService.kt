@@ -35,6 +35,10 @@ class NsfwAccessibilityService : AccessibilityService() {
     private var isWebFilterEnabled = true
     private var filterListener: ValueEventListener? = null
     
+    // Dynamic blocklist from Firebase (parent-defined blocked sites)
+    private val dynamicBlockedSites = mutableSetOf<String>()
+    private var blockedSitesListener: ValueEventListener? = null
+    
     // Strike tracking
     private var lastStrikeTime = 0L
     private val STRIKE_THROTTLE_MS = 2000L // 2 seconds per strike count
@@ -47,6 +51,7 @@ class NsfwAccessibilityService : AccessibilityService() {
         Log.d(TAG, "✓ NsfwAccessibilityService connected")
         NsfwActionManager.accessibilityService = this
         setupFirebaseListener()
+        setupDynamicBlocklistListener()
         listenForParentUnblocks()
     }
 
@@ -65,6 +70,55 @@ class NsfwAccessibilityService : AccessibilityService() {
                 Log.e(TAG, "Failed to read web filter state", error.toException())
             }
         })
+    }
+
+    /**
+     * Listens to Firebase for parent-defined blocked sites.
+     * Path: users/childs/$uid/blockedSites
+     * Each child should have a "url" field (String).
+     * Updates are applied in real-time alongside the static blocklist.
+     */
+    private fun setupDynamicBlocklistListener() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val blockedSitesRef = FirebaseDatabase.getInstance()
+            .getReference("users/childs/$uid/blockedSites")
+
+        blockedSitesListener = blockedSitesRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val newSites = mutableSetOf<String>()
+                for (child in snapshot.children) {
+                    val url = child.child("url").getValue(String::class.java)
+                    if (!url.isNullOrBlank()) {
+                        newSites.add(url.trim().lowercase())
+                    }
+                }
+                synchronized(dynamicBlockedSites) {
+                    dynamicBlockedSites.clear()
+                    dynamicBlockedSites.addAll(newSites)
+                }
+                Log.d(TAG, "Dynamic blocklist updated: ${newSites.size} sites loaded")
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Failed to read dynamic blocklist", error.toException())
+            }
+        })
+    }
+
+    /**
+     * Checks if a URL matches any entry in the parent-defined dynamic blocklist.
+     * Performs substring matching (same as the static list approach).
+     */
+    private fun isDynamicallyBlocked(url: String): Boolean {
+        val normalizedUrl = url.lowercase().replace("%20", " ").replace("+", " ")
+        synchronized(dynamicBlockedSites) {
+            for (blockedSite in dynamicBlockedSites) {
+                if (normalizedUrl.contains(blockedSite)) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private fun listenForParentUnblocks() {
@@ -143,7 +197,7 @@ class NsfwAccessibilityService : AccessibilityService() {
             val urlText = urlNode.text?.toString()
             Log.d(TAG, "✓ discovery: Found URL in $packageName: $urlText")
             
-            if (urlText != null && UrlBlockerHelper.isUrlBlocked(urlText)) {
+            if (urlText != null && (UrlBlockerHelper.isUrlBlocked(urlText) || isDynamicallyBlocked(urlText))) {
                 Log.e(TAG, "🚫 BLOCKED URL DISCOVERED in $packageName: $urlText")
                 incrementWebStrikeCounter(packageName)
                 blockUrl(urlText)
@@ -162,7 +216,7 @@ class NsfwAccessibilityService : AccessibilityService() {
         // We match common TLDs or explicit keyword discovery
         if (text.isNotEmpty()) {
             val isUrlLike = text.contains(".") || text.contains("/") || text.contains("search")
-            if (isUrlLike && UrlBlockerHelper.isUrlBlocked(text)) {
+            if (isUrlLike && (UrlBlockerHelper.isUrlBlocked(text) || isDynamicallyBlocked(text))) {
                 Log.v(TAG, "→ Matching node found in scan: [$text]")
                 return node
             }
@@ -264,6 +318,10 @@ class NsfwAccessibilityService : AccessibilityService() {
             if (filterListener != null) {
                 val dbRef = FirebaseDatabase.getInstance().getReference("users/childs/$uid/contentFilters/webFilter")
                 dbRef.removeEventListener(filterListener!!)
+            }
+            if (blockedSitesListener != null) {
+                val blockedSitesRef = FirebaseDatabase.getInstance().getReference("users/childs/$uid/blockedSites")
+                blockedSitesRef.removeEventListener(blockedSitesListener!!)
             }
             if (appUnblockListener != null) {
                 val appsRef = FirebaseDatabase.getInstance().getReference("users/childs/$uid/apps")
