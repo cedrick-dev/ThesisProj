@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -9,45 +10,47 @@
     android:orientation="vertical"
     tools:context=".activities.BlockedAppActivity">
 
-    <!-- Blocked Card -->
+    <!-- Blocked App Card -->
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_margin="@dimen/margin_32dp"
         android:background="@drawable/bg_card_elevated"
-        android:elevation="6dp"
+        android:elevation="@dimen/card_elevation"
         android:orientation="vertical"
         android:gravity="center"
         android:paddingTop="@dimen/margin_48dp"
         android:paddingBottom="@dimen/margin_48dp"
-        android:paddingStart="@dimen/margin_48dp"
-        android:paddingEnd="@dimen/margin_48dp">
+        android:paddingStart="@dimen/margin_32dp"
+        android:paddingEnd="@dimen/margin_32dp">
 
+        <!-- Lock Icon for app safety -->
         <ImageView
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginBottom="@dimen/margin_16dp"
-            android:src="@drawable/ic_cancel"
-            android:tint="@color/error_red" />
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginBottom="@dimen/margin_24dp"
+            android:src="@drawable/ic_lock"
+            app:tint="@color/colorPrimary" />
 
         <TextView
-            android:id="@+id/txtBlockedAppName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/margin_8dp"
-            android:text="@string/child_app_name"
+            android:layout_marginBottom="@dimen/margin_16dp"
+            android:text="App Not Available"
             android:textAlignment="center"
             android:textColor="@color/text_primary"
-            android:textSize="@dimen/text_size_18sp"
+            android:textSize="@dimen/text_size_22sp"
             android:fontFamily="@font/open_sans_bold"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/this_app_is_blocked_by_your_parents"
+            android:text="This app isn’t available right now based on your safety settings. If you think you need access, please ask your parent or guardian."
             android:textAlignment="center"
             android:textColor="@color/text_secondary"
-            android:textSize="@dimen/text_size_14sp"
+            android:textSize="@dimen/text_size_16sp"
+            android:lineSpacingExtra="4dp"
             android:fontFamily="@font/open_sans_regular" />
     </LinearLayout>
 
