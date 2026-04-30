@@ -5,7 +5,7 @@ import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import com.mansourappdevelopment.androidapp.kidsafe.activities.BlockedAppActivity
+import com.mansourappdevelopment.androidapp.kidsafe.activities.BlockedWebActivity
 import com.mansourappdevelopment.androidapp.kidsafe.services.MainForegroundService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -301,14 +301,13 @@ class NsfwAccessibilityService : AccessibilityService() {
     }
 
     private fun blockUrl(url: String) {
-        val intent = Intent(this, BlockedAppActivity::class.java).apply {
-            putExtra(MainForegroundService.BLOCKED_APP_NAME_EXTRA, "Inappropriate Content")
+        val intent = Intent(this, BlockedWebActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         try {
             startActivity(intent)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to launch BlockedAppActivity", e)
+            Log.e(TAG, "Failed to launch BlockedWebActivity", e)
         }
     }
 

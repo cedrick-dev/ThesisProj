@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_warm"
+    android:layoutDirection="locale"
+    android:gravity="center"
+    android:orientation="vertical"
+    tools:context=".activities.BlockedWebActivity">
+
+    <!-- Blocked Web Card -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/margin_32dp"
+        android:background="@drawable/bg_card_elevated"
+        android:elevation="@dimen/card_elevation"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingTop="@dimen/margin_48dp"
+        android:paddingBottom="@dimen/margin_48dp"
+        android:paddingStart="@dimen/margin_32dp"
+        android:paddingEnd="@dimen/margin_32dp">
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginBottom="@dimen/margin_24dp"
+            android:src="@drawable/ic_shield_check"
+            app:tint="@color/colorPrimary" />
+
+        <TextView
+            android:id="@+id/txtBlockedWebTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/margin_16dp"
+            android:text="Content Not Available"
+            android:textAlignment="center"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_size_22sp"
+            android:fontFamily="@font/open_sans_bold"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="This search or page is blocked to help keep you safe online."
+            android:textAlignment="center"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_size_16sp"
+            android:lineSpacingExtra="4dp"
+            android:fontFamily="@font/open_sans_regular" />
+    </LinearLayout>
+
+</LinearLayout>

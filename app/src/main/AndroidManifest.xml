@@ -37,6 +37,7 @@
         <activity android:name=".activities.ModeSelectionActivity" />
         <activity android:name=".activities.PermissionsActivity" />
         <activity android:name=".activities.BlockedAppActivity" />
+        <activity android:name=".activities.BlockedWebActivity" />
         <activity
             android:name=".activities.ChildDetailsActivity"
             android:parentActivityName=".activities.ParentSignedInActivity" />
