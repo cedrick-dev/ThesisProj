@@ -5,7 +5,7 @@ import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import com.mansourappdevelopment.androidapp.kidsafe.activities.BlockedAppActivity
+import com.mansourappdevelopment.androidapp.kidsafe.activities.BlockedWebActivity
 import com.mansourappdevelopment.androidapp.kidsafe.services.MainForegroundService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -280,70 +280,34 @@ class NsfwAccessibilityService : AccessibilityService() {
     }
 
     private fun incrementWebStrikeCounter(appPackage: String) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val currentTime = System.currentTimeMillis()
-        
+
         if (currentTime - lastStrikeTime > STRIKE_THROTTLE_MS) {
             lastStrikeTime = currentTime
-            
+
             val prefs = getSharedPreferences("WebFilterIncidentPrefs", Context.MODE_PRIVATE)
             val countKey = "web_strike_count_$appPackage"
             var currentCount = prefs.getInt(countKey, 0)
             currentCount++
             prefs.edit().putInt(countKey, currentCount).apply()
-            
-            Log.w(TAG, "🕸️ WEB VIOLATION! Incident detected for $appPackage.")
-            
-            // 1-strike lock: Block the app immediately
-            Log.e(TAG, "🚫 WEB THRESHOLD REACHED! Locking $appPackage immediately on first strike.")
-            blockAppAutomatically(uid, appPackage)
+
+            // ✅ Only log the web violation — do NOT lock the browser app itself.
+            // Chrome/browser is not the problem; the URL/content is.
+            // The blocked screen is shown via blockUrl() in the caller.
+            Log.w(TAG, "🕸️ WEB VIOLATION #$currentCount detected in $appPackage — showing block screen.")
         } else {
             Log.v(TAG, "Web strike throttled for $appPackage")
         }
     }
 
-    private fun blockAppAutomatically(uid: String, appPackage: String) {
-        val appsRef = FirebaseDatabase.getInstance().getReference("users/childs/$uid/apps")
-        appsRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    var blocked = false
-                    val targetPkg = appPackage.trim().lowercase()
-                    
-                    for (appSnapshot in snapshot.children) {
-                        try {
-                            val pName = appSnapshot.child("packageName").getValue(String::class.java)?.trim()?.lowercase()
-                            if (pName == targetPkg) {
-                                appSnapshot.ref.child("blocked").setValue(true)
-                                Log.e(TAG, "🚫 AUTOMATICALLY BLOCKED browser: $appPackage due to web filter violations.")
-                                blocked = true
-                                break
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error checking app package names", e)
-                        }
-                    }
-                    if (!blocked) {
-                        Log.w(TAG, "Could not find $appPackage in Firebase apps list to auto-block it.")
-                    }
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Failed to fetch apps for auto-blocking", error.toException())
-            }
-        })
-    }
-
     private fun blockUrl(url: String) {
-        val intent = Intent(this, BlockedAppActivity::class.java).apply {
-            putExtra(MainForegroundService.BLOCKED_APP_NAME_EXTRA, "Inappropriate Content")
+        val intent = Intent(this, BlockedWebActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         try {
             startActivity(intent)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to launch BlockedAppActivity", e)
+            Log.e(TAG, "Failed to launch BlockedWebActivity", e)
         }
     }
 

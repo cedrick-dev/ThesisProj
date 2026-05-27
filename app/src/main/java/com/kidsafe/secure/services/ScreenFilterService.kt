@@ -718,6 +718,16 @@ class ScreenFilterService : Service() {
             if (currentCount >= 3) {
                 Log.e(TAG, "🚫 THRESHOLD REACHED! Blocking $appPackage automatically.")
                 blockAppAutomatically(uid, appPackage)
+                
+                // Lock the app instantly without waiting for the Firebase roundtrip
+                val intent = Intent(this, com.mansourappdevelopment.androidapp.kidsafe.activities.BlockedAppActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                try {
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to launch BlockedAppActivity directly", e)
+                }
             }
         } else {
             Log.v(TAG, "Strike throttled for $appPackage")

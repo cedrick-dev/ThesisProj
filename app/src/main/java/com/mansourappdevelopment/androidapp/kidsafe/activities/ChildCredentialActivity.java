@@ -78,8 +78,8 @@ public class ChildCredentialActivity extends AppCompatActivity {
 
         try {
             int ageInt = Integer.parseInt(age);
-            if (ageInt < 1 || ageInt > 17) {
-                edtChildAge.setError("Age must be between 1 and 17");
+            if (ageInt < 3 || ageInt > 17) {
+                edtChildAge.setError("Age must be between 3 and 17");
                 edtChildAge.requestFocus();
                 return;
             }
