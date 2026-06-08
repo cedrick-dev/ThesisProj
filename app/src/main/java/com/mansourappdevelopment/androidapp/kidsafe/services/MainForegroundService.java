@@ -44,6 +44,7 @@ import com.google.firebase.database.ValueEventListener;
 import com.mansourappdevelopment.androidapp.kidsafe.R;
 import com.mansourappdevelopment.androidapp.kidsafe.activities.BlockedAppActivity;
 import com.mansourappdevelopment.androidapp.kidsafe.activities.ChildSignedInActivity;
+import com.mansourappdevelopment.androidapp.kidsafe.activities.LoginActivity;
 import com.mansourappdevelopment.androidapp.kidsafe.broadcasts.AppInstalledReceiver;
 import com.mansourappdevelopment.androidapp.kidsafe.broadcasts.AppRemovedReceiver;
 import com.mansourappdevelopment.androidapp.kidsafe.broadcasts.PhoneStateReceiver;
@@ -70,8 +71,11 @@ import android.app.NotificationManager;
 
 public class MainForegroundService extends Service {
 	public static final int NOTIFICATION_ID = 27;
+	public static final int BOOT_NOTIFICATION_ID = 28;
 	public static final String TAG = "MainServiceTAG";
 	public static final String BLOCKED_APP_NAME_EXTRA = "com.mansourappdevelopment.androidapp.kidsafe.services.BLOCKED_APP_NAME_EXTRA";
+	/** Set to true when the service is started by the BootCompleteReceiver */
+	public static final String EXTRA_LAUNCHED_FROM_BOOT = "com.mansourappdevelopment.androidapp.kidsafe.services.LAUNCHED_FROM_BOOT";
 	private ExecutorService executorService;
 	private ArrayList<App> apps;
 	private PhoneStateReceiver phoneStateReceiver;
@@ -116,17 +120,34 @@ public class MainForegroundService extends Service {
 				uid = intent.getStringExtra("CHILD_UID");
 			}
 			if (childEmail == null || uid == null) {
-				Log.e(TAG, "User not authenticated and no intent extras provided. Stopping service.");
-				// Must call startForeground before stopping to avoid ForegroundServiceDidNotStartInTimeException
-				Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-						.setSmallIcon(R.drawable.ic_notif_shield)
-						.setContentTitle("AegistNet Service Stopping")
-						.setContentText("User not authenticated")
-						.setPriority(NotificationCompat.PRIORITY_LOW)
-						.build();
-				startForeground(NOTIFICATION_ID, notification);
-				stopSelf();
-				return START_NOT_STICKY;
+				// No active Firebase session yet (common right after a device reboot
+				// before Firebase has re-authenticated). If this was a boot launch,
+				// show a notification that opens LoginActivity — which will auto-
+				// redirect to ChildSignedInActivity once Firebase restores the session.
+				boolean fromBoot = (intent != null)
+						&& intent.getBooleanExtra(EXTRA_LAUNCHED_FROM_BOOT, false);
+				if (fromBoot) {
+					Log.i(TAG, "Boot launch: no Firebase session yet — showing re-open notification.");
+					Notification placeholder = new NotificationCompat.Builder(this, CHANNEL_ID)
+							.setSmallIcon(R.drawable.ic_notif_shield)
+							.setContentTitle("AegistNet")
+							.setContentText("Tap to resume protection")
+							.setPriority(NotificationCompat.PRIORITY_LOW)
+							.build();
+					startForeground(NOTIFICATION_ID, placeholder);
+					showBootLoginNotification();
+				} else {
+					Log.e(TAG, "User not authenticated and no intent extras provided. Stopping service.");
+					Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+							.setSmallIcon(R.drawable.ic_notif_shield)
+							.setContentTitle("AegistNet Service Stopping")
+							.setContentText("User not authenticated")
+							.setPriority(NotificationCompat.PRIORITY_LOW)
+							.build();
+					startForeground(NOTIFICATION_ID, notification);
+					stopSelf();
+					return START_NOT_STICKY;
+				}
 			}
 		}
 
@@ -139,6 +160,18 @@ public class MainForegroundService extends Service {
 				.setSmallIcon(R.drawable.ic_notif_shield).setContentIntent(pendingIntent).build();
 
 		startForeground(NOTIFICATION_ID, notification);
+
+		// -----------------------------------------------------------------
+		// AUTO-OPEN ON BOOT (Android 10+ compatible)
+		// startActivity() from a BroadcastReceiver is blocked on API 29+.
+		// A full-screen intent notification is the correct solution:
+		// Android will surface it as a heads-up / full-screen overlay,
+		// effectively launching the app automatically.
+		// -----------------------------------------------------------------
+		boolean launchedFromBoot = (intent != null) && intent.getBooleanExtra(EXTRA_LAUNCHED_FROM_BOOT, false);
+		if (launchedFromBoot && uid != null) {
+			showBootLaunchNotification();
+		}
 
 		// Update device model in Firebase
 		if (uid != null) {
@@ -660,6 +693,69 @@ public class MainForegroundService extends Service {
 			}
 		}
 
+	} // end LockerThread
+
+	/**
+	 * Shows a full-screen intent notification to bring the app to the foreground on boot.
+	 * This is the Android-approved mechanism on API 29+ where startActivity() from
+	 * background contexts (BroadcastReceiver / Service) is blocked by the OS.
+	 *
+	 * On most devices Android will automatically promote this to a full-screen overlay,
+	 * launching the activity without requiring user interaction.
+	 */
+	private void showBootLaunchNotification() {
+		Intent openAppIntent = new Intent(this, ChildSignedInActivity.class);
+		openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+		PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
+				this, 1, openAppIntent,
+				PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+		Notification bootNotification = new NotificationCompat.Builder(this, HIGH_PRIORITY_CHANNEL_ID)
+				.setSmallIcon(R.drawable.ic_notif_shield)
+				.setContentTitle("AegistNet is active")
+				.setContentText("Tap to open the monitoring app.")
+				.setPriority(NotificationCompat.PRIORITY_MAX)
+				.setCategory(NotificationCompat.CATEGORY_ALARM)
+				.setFullScreenIntent(fullScreenPendingIntent, /* highPriority= */ true)
+				.setContentIntent(fullScreenPendingIntent)
+				.setAutoCancel(true)
+				.build();
+
+		NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		if (nm != null) {
+			nm.notify(BOOT_NOTIFICATION_ID, bootNotification);
+		}
 	}
 
-}
+	/**
+	 * Shown on boot when no Firebase session is cached yet.
+	 * Opens LoginActivity, which automatically redirects authenticated users
+	 * to ChildSignedInActivity via its onStart() logic.
+	 */
+	private void showBootLoginNotification() {
+		Intent loginIntent = new Intent(this, LoginActivity.class);
+		loginIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+		PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
+				this, 2, loginIntent,
+				PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+		Notification bootNotification = new NotificationCompat.Builder(this, HIGH_PRIORITY_CHANNEL_ID)
+				.setSmallIcon(R.drawable.ic_notif_shield)
+				.setContentTitle("AegistNet restarted")
+				.setContentText("Tap to resume parental protection.")
+				.setPriority(NotificationCompat.PRIORITY_MAX)
+				.setCategory(NotificationCompat.CATEGORY_ALARM)
+				.setFullScreenIntent(fullScreenPendingIntent, true)
+				.setContentIntent(fullScreenPendingIntent)
+				.setAutoCancel(true)
+				.build();
+
+		NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		if (nm != null) {
+			nm.notify(BOOT_NOTIFICATION_ID, bootNotification);
+		}
+	}
+
+} // end MainForegroundService

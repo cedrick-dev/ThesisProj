@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission
@@ -46,7 +47,9 @@
         <activity
             android:name=".activities.SignUpActivity"
             android:parentActivityName=".activities.LoginActivity" />
-        <activity android:name=".activities.LoginActivity" android:exported="true">
+        <activity android:name=".activities.LoginActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -64,7 +67,8 @@
             android:name=".services.UploadAppsService"
             android:permission="android.permission.BIND_JOB_SERVICE" />
         <service 
-            android:name=".services.MainForegroundService" />
+            android:name=".services.MainForegroundService"
+            android:foregroundServiceType="dataSync" />
         <service 
             android:name=".services.GeoFencingForegroundService" />
         
@@ -87,9 +91,14 @@
                 android:resource="@xml/nsfw_accessibility_service_config" />
         </service>
 
-        <receiver android:name=".broadcasts.BootCompleteReceiver" android:exported="true">
-            <intent-filter>
+        <receiver android:name=".broadcasts.BootCompleteReceiver"
+            android:exported="true"
+            android:directBootAware="false">
+            <intent-filter android:priority="999">
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <!-- HTC / Motorola fast-boot support -->
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
 
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
